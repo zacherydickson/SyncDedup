@@ -17,13 +17,13 @@ Sketcher::Sketcher( size_t k, size_t s, double d,
     :   k_(k), s_(s), w_(k-s), c_(int(d)),
         alphabet_size_(alphabet_size), hasher_(std::move(hasher))
 {
-    if (s_ == 0 || k_ == 0) {
+    if (s_ <= 0 || k_ <= 0) {
         throw std::invalid_argument("k- and s-mer length must be greater than zero.");
     }
     if (s_ >= k_) {
         throw std::invalid_argument("s-mer length (s) must be smaller than k-mer length (k).");
     }
-    if(d < 1) {
+    if(d < 1.0) {
         throw std::invalid_argument("downsampling factor (d) must at least 1");
     }
     
@@ -113,3 +113,8 @@ Sketch Sketcher::generate_sketch_impl(std::string_view seq) const {
 
     return sketch;
 }
+
+Sketcher::HashFunction Sketcher::LexicographicCoding = [](std::string_view) {
+    uint64_t code = 0;
+    return code;
+};

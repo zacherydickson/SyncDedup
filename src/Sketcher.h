@@ -37,6 +37,8 @@ public:
         return generate_sketch_impl(sequence);
     }
 
+    static HashFunction LexicographicCoding;
+
 private:
     size_t k_;
     size_t s_;
