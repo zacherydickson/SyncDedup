@@ -1,0 +1,29 @@
+{
+    "version": 4,
+    "configurePresets": [
+        {
+            "name": "release",
+            "binaryDir" : "${sourceDir}/build",
+            "cacheVariables": {
+               "CMAKE_BUILD_TYPE": "Release",
+               "CMAKE_INSTALL_DIR": "bin" 
+           }
+        },
+        {
+            "name": "debug",
+            "binaryDir" : "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_INSTALL_DIR": "bin" 
+            }
+        },
+        {
+            "name": "test",
+            "binaryDir" : "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Test",
+                "CMAKE_INSTALL_DIR": "test"
+            }
+        }
+    ]
+}

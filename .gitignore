@@ -1,0 +1,5 @@
+CMakeFiles
+build/
+*.swp
+.local.vimrc
+compile_commands.json
