@@ -23,7 +23,7 @@ Sketcher::Sketcher( size_t k, size_t s, double d,
     if (s_ >= k_) {
         throw std::invalid_argument("s-mer length (s) must be smaller than k-mer length (k).");
     }
-    if(d_ < 1) {
+    if(d < 1) {
         throw std::invalid_argument("downsampling factor (d) must at least 1");
     }
     

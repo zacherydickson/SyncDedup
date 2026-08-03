@@ -41,7 +41,6 @@ private:
     size_t k_;
     size_t s_;
     size_t w_;
-    size_t d_;
     size_t c_;
     size_t alphabet_size_;
     HashFunction hasher_;

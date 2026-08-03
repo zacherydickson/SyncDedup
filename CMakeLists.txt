@@ -1,7 +1,8 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.25)
 
 project(SyncDedup)
-
+enable_testing()
+option(BUILD_TESTING "Enable testing and build tests" OFF)
 
 add_library(Sketcher)
 target_sources(Sketcher
@@ -11,9 +12,9 @@ target_sources(Sketcher
     PUBLIC
         FILE_SET sketcherHeaders
         TYPE HEADERS
-        BASE_DIRS include
+        BASE_DIRS src
         FILES
-            include/Sketcher.h
+            src/Sketcher.h
 )
 
 add_executable(syncdedup)
@@ -21,15 +22,23 @@ target_sources(syncdedup
     PRIVATE
         src/syncdedup.cpp
 )
+#In case we need to require a language feature
+#target_compile_features(syncdedup PRIVATE cxx_std_17)
 target_link_libraries(syncdedup
     PRIVATE
         Sketcher
 )
 
-if(CMAKE_BUILD_TYPE EQUAL "Test")
-    add_executable(test)
-    target_sources(test
-        PRIVATE
-            test/test.cpp
-    )
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
 endif()
+
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set_property(CACHE CMAKE_INSTALL_PREFIX PROPERTY VALUE ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
+
+install(
+    TARGETS syncdedup Sketcher
+    FILE_SET sketcherHeaders
+)

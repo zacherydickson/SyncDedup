@@ -1,5 +1,8 @@
 CMakeFiles
 build/
+bin/
+include/
+lib/
 *.swp
 .local.vimrc
 compile_commands.json
