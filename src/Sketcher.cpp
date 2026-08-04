@@ -6,7 +6,7 @@
 #include <functional>
 #include <algorithm>
 #include <Sketcher.h>
-
+#include <cmath>
 
 std::string SketchElement:: to_string() const {
     return std::to_string(hash) + ":" + std::to_string(position);
@@ -26,17 +26,13 @@ Sketcher::Sketcher( size_t k, size_t s, double d,
     if(d < 1.0) {
         throw std::invalid_argument("downsampling factor (d) must at least 1");
     }
-    
-    // Default hash function if none provided (using a basic Fowler–Noll–Vo or std::hash fallback)
-    if (!hasher_) {
-        hasher_ = [](std::string_view sv) {
-            uint64_t hash = 14695981039346656037ULL;
-            for (char c : sv) {
-                hash ^= (uint64_t)(c);
-                hash *= 1099511628211ULL;
-            }
-            return hash;
-        };
+    if(alphabet_size_ < 1) {
+        throw std::invalid_argument("Alphabet size must be at least 1.");
+    }
+    try {
+        hasher_(std::string(k_,'A'));
+    } catch (std::invalid_argument & e) {
+        throw std::invalid_argument("Provided hasher is incompatible with requested kmer length");
     }
 }
 
@@ -50,6 +46,7 @@ void Sketcher::fill_shashVec(   std::string_view seq, size_t start, size_t end,
 }
 
 Sketch Sketcher::generate_sketch_impl(std::string_view seq) const {
+
     // A sequence must be at least length k to form a single k-mer
     if (seq.length() < k_) {
         std::string msg =   "Input sequence is too short to generate a sketch"
@@ -73,7 +70,7 @@ Sketch Sketcher::generate_sketch_impl(std::string_view seq) const {
     //Start with the first w_ smers
     this->fill_shashVec(seq,0,w_-1,shashVec);
 
-    size_t i;
+    size_t i = 0;
     while(i < num_kmers){
         // Find the smallest s-mer value inside this kmer
         // Ties broken towards the leftmost s-mer (min_element finds the first occurrence on ties)
@@ -94,7 +91,7 @@ Sketch Sketcher::generate_sketch_impl(std::string_view seq) const {
             //Downsampling condition
             std::string_view kmer = seq.substr(i, k_);
             uint64_t code = hasher_(kmer);
-            if(code % c_ > 0) {
+            if(code % c_ == 0) {
                 sketch.push_back(SketchElement{.hash = code, .position = i });
             }
         }
@@ -110,11 +107,36 @@ Sketch Sketcher::generate_sketch_impl(std::string_view seq) const {
             this->fill_shashVec(seq,i,i,shashVec);
         }
     }
-
     return sketch;
 }
 
-Sketcher::HashFunction Sketcher::LexicographicCoding = [](std::string_view) {
+Sketcher::HashFunction Sketcher::FNVHash = [](std::string_view sv) {
+    uint64_t hash = 14695981039346656037ULL;
+    for (char c : sv) {
+        hash ^= (uint64_t)(c);
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+};
+
+uint64_t Sketcher::LexicographicCoder(  const Alphabet & alpha,
+                                        std::string_view sv)
+{
+    //Each digit can be represented by log(|Σ|) / log(2) bits
+    double base = alpha.size();
+    double bitsPerResidue = std::log( base ) / std::log( 2.0 );
+    size_t bits = std::ceil(bitsPerResidue * sv.length());
+    if(bits > 64) {
+        throw std::invalid_argument("Lexicographic code longer than 64 bits");
+    }
     uint64_t code = 0;
+    double power = 0.0;
+    for(auto it = sv.rbegin(); it != sv.rend(); it++){
+        size_t count = alpha.at(*it);
+        code += count * std::pow( base, power++);
+    }
     return code;
 };
+
+Sketcher::Alphabet Sketcher::DNA_Alphabet = {{'A',0},{'C',1},{'G',2},{'T',3}};
+Sketcher::Alphabet Sketcher::RNA_Alphabet = {{'A',0},{'C',1},{'G',2},{'U',3}};
