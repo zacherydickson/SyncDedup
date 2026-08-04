@@ -1,14 +1,14 @@
 find_package(Catch2 3 REQUIRED)
 
-add_library(todoTest)
+add_library(Catch2Extensions)
 target_sources(
-    todoTest
+    Catch2Extensions 
     PUBLIC
         FILE_SET HEADERS
         FILES
-            todotest.h
+            Catch2Extensions.hpp
 )
-set_target_properties(todoTest PROPERTIES LINKER_LANGUAGE CXX)
+set_target_properties(Catch2Extensions PROPERTIES LINKER_LANGUAGE CXX)
 
 add_executable(TestSketcher)
 target_sources(
@@ -21,7 +21,7 @@ target_link_libraries(TestSketcher
     PRIVATE 
         Sketcher
         Catch2::Catch2WithMain
-        todoTest
+        Catch2Extensions
 )
 
 include(CTest)

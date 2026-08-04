@@ -2,8 +2,7 @@
 #include <Sketcher.h>
 #include <string>
 #include <catch2/catch_test_macros.hpp>
-#include <todotest.h>
-
+#include <Catch2Extensions.hpp>
 
 TEST_CASE( "Sketch object construction", "[Sketch]" ) {
 
@@ -27,16 +26,16 @@ TEST_CASE( "Sketch object construction", "[Sketch]" ) {
     }
 }
 
-TEST_CASE( "Sketch generation", "[Sketch]" ) {
+TODO_TEST_CASE( "Sketch generation", "[Sketch]", {
     Sketcher sketcher(15,5,1.0);
     std::string seq = "ACTGACTGGATCAGAACAGGG";
 
     Sketch sketch = sketcher.generate_sketch(seq);
-    todo_test([&sketch] {
-        REQUIRE(sketch.size() > 0);
-    } );
+    REQUIRE(sketch.size() > 0);
 }
+);
 
+//
 //TEST_CASE( "Hash function initialization works", "[Sketch]" ) {
 //    Sketcher defaultSketcher(15,5,1.0);
 //    Sketcher::HashFunction F([](std::string_view a ) {
