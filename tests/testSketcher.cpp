@@ -1,8 +1,9 @@
 #include <iostream>
 #include <Sketcher.h>
 #include <string>
-#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_all.hpp>
 #include <Catch2Extensions.hpp>
+#include <algorithm>
 
 
 Sketcher::Alphabet alpha2 = {{'A',0},{'C',1}};
@@ -27,6 +28,14 @@ TEST_CASE( "LexicographicCoding" , "[Sketch]") {
         REQUIRE(Sketcher::LexicographicCoder(alpha4,"TTTT") == 255ULL);
         REQUIRE(Sketcher::LexicographicCoder(alpha4,"ACACGTGT") == 4539ULL);
         REQUIRE(Sketcher::LexicographicCoder(alpha4,"AAAAAAAA") == 0ULL);
+    }
+}
+
+TEST_CASE( "FNV Hash", "[Sketch]") {
+    SECTION ("Generates correct codes") {
+        REQUIRE(Sketcher::FNVHash("ACGT")       == 0x9a90178ba8feda4e);
+        REQUIRE(Sketcher::FNVHash("ACGA")       == 0x9a900c8ba8fec79d);
+        REQUIRE(Sketcher::FNVHash("ACGTTGCA")   == 0xcba7310ee49c735b);
     }
 }
 
@@ -67,11 +76,65 @@ TEST_CASE( "Sketch object construction", "[Sketch]" ) {
 }
 
 
-TEST_CASE( "Sketch generation", "[Sketch]") {
-    Sketcher sketcher(15,5,1.0);
-    std::string seq = "ACTGACTGGATCAGAACAGGG";
+TEST_CASE( "Correct Sketches can be generated", "[Sketch]") {
+    struct testParam_t {
+        std::string seq;
+        Sketcher sketcher;
+        Sketch sketch;
+    };
+    auto [seq,sketcher,expected] = GENERATE(values<testParam_t>({
+       {   "ACTGACTGGA",
+           Sketcher(6,4,1.0),
+           {   {0xC0DEB678B0D9E8AD,2},
+               {0xE61F35FF38889D0D,3},
+               {0xAD5B20031CE9F118,4} } },
+       {    "ACGATGCTACTTGACGT",
+            Sketcher(8,5,1.0,4,[](std::string_view sv){
+                    return (size_t) std::hash<std::string_view>{}(sv); }),
+            {   {0x3676e1ac56f7b2eb,1},
+                {0xc6a6dedf91006e09,2},
+                {0xc23740410cd80b2b,5},
+                {0x867f1fe436983e24,6},
+                {0xc242b6e4fd5ba2a4,9} } },
+        {
+            "GTCAGTCGTAGCTAGCTGACTGCAT",
+            Sketcher(17,5,1.0,Sketcher::DNA_Alphabet),
+            {   {0x00000001B2727879,7}
+            }
+        }
+    }) );
+
     Sketch sketch = sketcher.generate_sketch(seq);
-    REQUIRE(sketch.size() > 0);
+    REQUIRE( std::equal(sketch.begin(),sketch.end(),expected.begin()));
+ //   Sketcher sketcher();
+ //   std::equal()
+ //   static const int nSeq = 2;
+ //   std::string seqs[nSeq] = {  "ACTGACTGGATCAGAACAGGGTGAGAT",
+ //                               "GTACCGATACGTACGACGTACGTCAGT" };
+    //auto i 
+    //GIVEN( "An FNV Hash Sketcher") {
+    //    Sketcher(15,5,1.0),
+    //    WHEN( "Sketches are generated" ) {
+    //        Sketch sketches[nSeq];
+    //        for(int i = 0; i < nSeq; i++){
+    //            sketches[i] = Sketcher.generate_
+    //    }
+    //}
+    //static const int nSketcher = 3;
+    //Sketcher sketchers[nSketcher] = {
+    //                            Sketcher(15,6,1.0,Sketcher::DNA_Alphabet),
+    //                            Sketcher(21,5,1.0,4,stdHasher) };
+    //Sketch sketches[nSeq * nSketcher];
+    //for(int i = 0; i < nSeq; i++){
+    //    for (int j = 0; j < nSketcher; j++){
+    //        sketches[i*nSeq+j] = sketchers[j].generate_sketch(seqs[i]);
+    //    }
+    //}
+    //SECTION("Generates correct Sketches") {
+    //    REQUIRE(
+    //}
+    //Sketch sketch = sketcher.generate_sketch(seq);
+    //REQUIRE(sketch.size() > 0);
 }
 
 //
