@@ -92,24 +92,27 @@ Sketch Sketcher::generate_sketch_impl(std::string_view seq) const {
             std::string_view kmer = seq.substr(i, k_);
             uint64_t code = hasher_(kmer);
             if(code % c_ == 0) {
-                sketch.push_back(SketchElement{.hash = code, .position = i });
+                sketch.push_back(SketchElement{.hash = code, .position = i+1 });
             }
         }
 
-        //Determine how far to advance by the location of the best smer
-        if(best_smer_local_idx == num_smers - 1){
-            // The best smer is at the end, which precludes the next k -s - 1 kmers, so we advance k-s
-            this->fill_shashVec(seq,i+1,i+k_-s_,shashVec);
-            i += k_ - s_;
-        } else { //The case for best at start, or fails the to pass condition
-            //Advance one kmer
+        ////Determine how far to advance by the location of the best smer
+        //if(best_smer_local_idx == num_smers - 1){
+        //    // The best smer is at the end, which precludes the next k -s - 1 kmers, so we advance k-s
+        //    this->fill_shashVec(seq,i+1,i+k_-s_,shashVec);
+        //    i += k_ - s_;
+        //} else { //The case for best at start, or fails the to pass condition
+        //    //Advance one kmer
+            //TODO: It actually seems that it does not matter which slot is best, the next kmer could still pass
+            // If correct, then we can refactor the code a bit
             i++;
             this->fill_shashVec(seq,i,i,shashVec);
-        }
+        //}
     }
     return sketch;
 }
 
+//Fowler -Nol-Vo hash function
 const Sketcher::HashFunction Sketcher::FNVHash = [](std::string_view sv) {
     uint64_t hash = 14695981039346656037ULL;
     for (char c : sv) {
