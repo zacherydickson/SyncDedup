@@ -42,7 +42,7 @@ public:
         return generate_sketch_impl(sequence);
     }
 
-    static HashFunction FNVHash;
+    static const HashFunction FNVHash;
     static HashFunction BindLexicographicCoder(const Alphabet & alpha)
     {
         return std::bind(   Sketcher::LexicographicCoder, std::cref(alpha),

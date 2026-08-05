@@ -110,7 +110,7 @@ Sketch Sketcher::generate_sketch_impl(std::string_view seq) const {
     return sketch;
 }
 
-Sketcher::HashFunction Sketcher::FNVHash = [](std::string_view sv) {
+const Sketcher::HashFunction Sketcher::FNVHash = [](std::string_view sv) {
     uint64_t hash = 14695981039346656037ULL;
     for (char c : sv) {
         hash ^= (uint64_t)(c);
