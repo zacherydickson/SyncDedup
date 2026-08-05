@@ -37,7 +37,10 @@ TEST_CASE( "Sketch object construction", "[Sketch]" ) {
         REQUIRE_NOTHROW( Sketcher(15,5,1.0,1) );
         REQUIRE_NOTHROW( Sketcher(15,5,2.5,4) );
         REQUIRE_NOTHROW( Sketcher(15,5,2.5,4,
-                    Sketcher::BindLexicographicCoder(Sketcher::DNA_Alphabet)));
+                    Sketcher::BindLexicographicCoder(Sketcher::DNA_Alphabet)) );
+    }
+    SECTION ( "Alphabet Shortcut Constructor" ) {
+        REQUIRE_NOTHROW( Sketcher(15,5,2.5,Sketcher::DNA_Alphabet) );
     }
     SECTION ( "Throws invalid arguments for zero k" ) {
         REQUIRE_THROWS_AS( Sketcher(0,5,1.0), std::invalid_argument);
@@ -58,12 +61,10 @@ TEST_CASE( "Sketch object construction", "[Sketch]" ) {
     }
     SECTION ( "Throws invalid argument for bad hasher-k combos" ) {
         REQUIRE_THROWS_AS(
-                Sketcher(33,5,2.5,4,
-                    Sketcher::BindLexicographicCoder(Sketcher::DNA_Alphabet)),
+                Sketcher(33,5,2.5,Sketcher::DNA_Alphabet),
                 std::invalid_argument);
     }
 }
-
 
 
 TEST_CASE( "Sketch generation", "[Sketch]") {

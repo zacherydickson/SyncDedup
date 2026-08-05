@@ -26,6 +26,8 @@ public:
     Sketcher(   size_t k, size_t s, double d,
                 size_t alphabet_size = 4,
                 HashFunction hasher = Sketcher::FNVHash);
+    Sketcher(   size_t k, size_t s, double d, Alphabet alpha) :
+        Sketcher(k,s,d,alpha.size(),BindLexicographicCoder(alpha)) {};
 
     // Generates a sketch from a string
     //  (accepts rvalue/lvalue, uses move semantics)
