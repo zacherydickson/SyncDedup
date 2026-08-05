@@ -10,6 +10,9 @@ struct SketchElement {
     uint64_t hash;
     size_t position;
     std::string to_string() const;
+    bool operator==(const SketchElement & other) const {
+        return (this->hash == other.hash && this->position == other.position);
+    }
 };
 
 using Sketch = std::vector<SketchElement>;
