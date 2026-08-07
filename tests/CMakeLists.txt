@@ -24,6 +24,20 @@ target_link_libraries(TestSketcher
         Catch2Extensions
 )
 
+add_executable(TestLocalSyncmerMap)
+target_sources(
+    TestLocalSyncmerMap
+    PRIVATE
+    testLocalSyncmerMap.cpp
+)
+target_compile_features(TestSketcher PRIVATE cxx_std_17)
+target_link_libraries(TestSketcher
+    PRIVATE 
+        LocalSyncmerMap
+        Catch2::Catch2WithMain
+        Catch2Extensions
+)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(TestSketcher)
