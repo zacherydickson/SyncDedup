@@ -221,7 +221,7 @@ double factorial(double n) {
 //This probability assumes all characters in l are distinct
 //Which operates as a conservative lower bound for the the probability
 //with repeated characters
-//l is the length of the permuted sequence 
+//l is the length of the permuted sequence
 //k is the number of positions which do not change
 double ProbPermutedPass(size_t l, size_t k) {
     double p = 0.0;
