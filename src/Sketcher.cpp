@@ -35,14 +35,19 @@ Sketcher::Sketcher( size_t k, size_t s, double d,
     }
 }
 
-void Sketcher::fill_shashVec(   const std::string & seq, size_t start, size_t end,
-                                std::vector<uint64_t> & vec) const
+//Returns the first position in the sequence which is still in the vector
+//Assuming the vector has been filled continuously
+size_t Sketcher::fill_shashVec(   const std::string & seq, size_t start,
+                                size_t count, std::vector<uint64_t> & vec) const
 {
-    for(size_t i = start; i <= end && i < seq.size(); i++){
+    size_t i = start;
+    while(i < start + count && i < seq.size()){
         size_t slot = i % vec.size(); 
         size_t hash = hasher_(seq.substr(i,s_));
         vec[slot] = hash;
+        i++;
     }
+    return (i > vec.size()) ? i - vec.size() : 0;
 }
 
 //Generates a sketch for an input sequence, where the sketch is the syncmers for
@@ -71,10 +76,12 @@ Sketch Sketcher::generate_sketch_impl(const std::string & seq) const {
     //Sinlge memory allocation to store hashes of s-mers
     size_t num_smers = k_ - s_ + 1;
     std::vector<uint64_t> shashVec(num_smers,0ULL);
-    //Start with the first w_ smers
-    this->fill_shashVec(seq,0,num_smers-1,shashVec);
-    size_t i = 0;
-    while(i < num_kmers){
+    //Start with the first w_ smers,
+    // on update fill the oldest slot and update the index
+    for(    size_t i = fill_shashVec(seq,0,num_smers,shashVec);
+            i < num_kmers;
+            i = fill_shashVec(seq,i+num_smers,1,shashVec) )
+    {
         // Find the smallest s-mer value inside this kmer
         // Ties broken towards the leftmost s-mer (min_element finds the first occurrence on ties)
         size_t best_smer_local_idx = 0;
@@ -88,35 +95,21 @@ Sketch Sketcher::generate_sketch_impl(const std::string & seq) const {
             }
         }
 
-        std::string kmer = seq.substr(i, k_);
         //Test if the kmer meets the conditions
         //  bounded syncmer condition best smer is at start or end
         if(best_smer_local_idx == 0 || best_smer_local_idx == num_smers -1){
-            //std::string kmer = seq.substr(i, k_);
+            std::string kmer = seq.substr(i, k_);
             uint64_t code = hasher_(kmer);
             //Downsampling condition
             if(code % c_ == 0) {
                 sketch.push_back(SketchElement{.hash = code, .position = i+1 });
             }
         }
-
-        ////Determine how far to advance by the location of the best smer
-        //if(best_smer_local_idx == num_smers - 1){
-        //    // The best smer is at the end, which precludes the next k -s - 1 kmers, so we advance k-s
-        //    this->fill_shashVec(seq,i+1,i+k_-s_,shashVec);
-        //    i += k_ - s_;
-        //} else { //The case for best at start, or fails the to pass condition
-        //    //Advance one kmer
-            //TODO: It actually seems that it does not matter which slot is best, the next kmer could still pass
-            // If correct, then we can refactor the code a bit
-            i++;
-            this->fill_shashVec(seq,i+num_smers-1,i+num_smers-1,shashVec);
-        //}
     }
     return sketch;
 }
 
-//Fowler -Nol-Vo hash function
+//Fowler -Noll-Vo hash function
 const Sketcher::HashFunction Sketcher::FNVHash = [](const std::string & sv) {
     uint64_t hash = 14695981039346656037ULL;
     for (char c : sv) {

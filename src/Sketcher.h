@@ -64,7 +64,7 @@ private:
     const size_t alphabet_size_;
     HashFunction hasher_;
 
-    void fill_shashVec( const std::string & seq, size_t start, size_t end,
+    size_t fill_shashVec( const std::string & seq, size_t start, size_t count,
                         std::vector<uint64_t> & vec) const;
 
     Sketch generate_sketch_impl(const std::string & seq) const;
