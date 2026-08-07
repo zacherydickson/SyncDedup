@@ -1,6 +1,5 @@
 #include <vector>
 #include <string>
-#include <string_view>
 #include <cstdint>
 #include <stdexcept>
 #include <functional>
@@ -36,25 +35,29 @@ Sketcher::Sketcher( size_t k, size_t s, double d,
     }
 }
 
-void Sketcher::fill_shashVec(   std::string_view seq, size_t start, size_t end,
+void Sketcher::fill_shashVec(   const std::string & seq, size_t start, size_t end,
                                 std::vector<uint64_t> & vec) const
 {
     for(size_t i = start; i <= end && i < seq.size(); i++){
         size_t slot = i % vec.size(); 
-        vec[slot] = hasher_(seq.substr(start,s_));
+        size_t hash = hasher_(seq.substr(i,s_));
+        vec[slot] = hash;
     }
 }
 
-Sketch Sketcher::generate_sketch_impl(std::string_view seq) const {
-
-    // A sequence must be at least length k to form a single k-mer
-    if (seq.length() < k_) {
-        std::string msg =   "Input sequence is too short to generate a sketch"
-                            "(length < k).";
-        throw std::out_of_range(msg);
-    }
+//Generates a sketch for an input sequence, where the sketch is the syncmers for
+//  the sequence paired with the positions in the sequence at which those syncmers occur
+//  The sketch will be empty if the input is smaller than the value of k_
+//  The sketch may be empty if the numer of kmers in the input is smaller than k - s
+//Input - a string representing a sequence for which to generate a sketch
+//Output - a vector of sketch elements
+Sketch Sketcher::generate_sketch_impl(const std::string & seq) const {
 
     Sketch sketch;
+    // A sequence must be at least length k to form a single k-mer
+    if (seq.length() < k_) {
+        return sketch;
+    }
     
     // Bounded positional syncmer logic:
     // A k-mer of length k contains (k - s + 1) s-mers.
@@ -66,31 +69,32 @@ Sketch Sketcher::generate_sketch_impl(std::string_view seq) const {
     //size_t num_windows = seq.length() - w_ + 1;
     
     //Sinlge memory allocation to store hashes of s-mers
-    std::vector<uint64_t> shashVec(w_,0ULL);
+    size_t num_smers = k_ - s_ + 1;
+    std::vector<uint64_t> shashVec(num_smers,0ULL);
     //Start with the first w_ smers
-    this->fill_shashVec(seq,0,w_-1,shashVec);
-
+    this->fill_shashVec(seq,0,num_smers-1,shashVec);
     size_t i = 0;
     while(i < num_kmers){
         // Find the smallest s-mer value inside this kmer
         // Ties broken towards the leftmost s-mer (min_element finds the first occurrence on ties)
         size_t best_smer_local_idx = 0;
-        size_t bestSlot = i % w_;
-        size_t num_smers = k_ - s_ + 1;
+        size_t bestSlot = i % num_smers;
         for (size_t j = 1; j < num_smers; ++j) {
-            size_t slot = (i + j) % w_;
+            size_t slot = (i + j) % num_smers;
+            auto s = std::string(seq.substr(i+j,s_));
             if (shashVec[slot] < shashVec[bestSlot]) {
                 bestSlot = slot;
                 best_smer_local_idx = j;
             }
         }
 
+        std::string kmer = seq.substr(i, k_);
         //Test if the kmer meets the conditions
         //  bounded syncmer condition best smer is at start or end
-        if(best_smer_local_idx > 0 || best_smer_local_idx < num_smers -1){
-            //Downsampling condition
-            std::string_view kmer = seq.substr(i, k_);
+        if(best_smer_local_idx == 0 || best_smer_local_idx == num_smers -1){
+            //std::string kmer = seq.substr(i, k_);
             uint64_t code = hasher_(kmer);
+            //Downsampling condition
             if(code % c_ == 0) {
                 sketch.push_back(SketchElement{.hash = code, .position = i+1 });
             }
@@ -106,14 +110,14 @@ Sketch Sketcher::generate_sketch_impl(std::string_view seq) const {
             //TODO: It actually seems that it does not matter which slot is best, the next kmer could still pass
             // If correct, then we can refactor the code a bit
             i++;
-            this->fill_shashVec(seq,i,i,shashVec);
+            this->fill_shashVec(seq,i+num_smers-1,i+num_smers-1,shashVec);
         //}
     }
     return sketch;
 }
 
 //Fowler -Nol-Vo hash function
-const Sketcher::HashFunction Sketcher::FNVHash = [](std::string_view sv) {
+const Sketcher::HashFunction Sketcher::FNVHash = [](const std::string & sv) {
     uint64_t hash = 14695981039346656037ULL;
     for (char c : sv) {
         hash ^= (uint64_t)(c);
@@ -123,7 +127,7 @@ const Sketcher::HashFunction Sketcher::FNVHash = [](std::string_view sv) {
 };
 
 uint64_t Sketcher::LexicographicCoder(  const Alphabet & alpha,
-                                        std::string_view sv)
+                                        const std::string & sv)
 {
     //Each digit can be represented by log(|Σ|) / log(2) bits
     double base = alpha.size();
@@ -141,5 +145,5 @@ uint64_t Sketcher::LexicographicCoder(  const Alphabet & alpha,
     return code;
 };
 
-Sketcher::Alphabet Sketcher::DNA_Alphabet = {{'A',0},{'C',1},{'G',2},{'T',3}};
-Sketcher::Alphabet Sketcher::RNA_Alphabet = {{'A',0},{'C',1},{'G',2},{'U',3}};
+const Sketcher::Alphabet Sketcher::DNA_Alphabet = {{'A',0},{'C',1},{'G',2},{'T',3}};
+const Sketcher::Alphabet Sketcher::RNA_Alphabet = {{'A',0},{'C',1},{'G',2},{'U',3}};

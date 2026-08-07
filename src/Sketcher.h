@@ -2,7 +2,6 @@
 #include <functional>
 #include <map>
 #include <string>
-#include <string_view>
 #include <vector>
 
 // Represents a single element in the sketch
@@ -19,7 +18,7 @@ using Sketch = std::vector<SketchElement>;
 
 class Sketcher {
 public:
-    using HashFunction = std::function<uint64_t(std::string_view)>;
+    using HashFunction = std::function<uint64_t(const std::string &)>;
     using Alphabet = std::map<char,size_t>;
 
     // Constructor: Initializes parameters. 
@@ -29,7 +28,7 @@ public:
     Sketcher(   size_t k, size_t s, double d,
                 size_t alphabet_size = 4,
                 HashFunction hasher = Sketcher::FNVHash);
-    Sketcher(   size_t k, size_t s, double d, Alphabet alpha) :
+    Sketcher(   size_t k, size_t s, double d, const Alphabet & alpha) :
         Sketcher(k,s,d,alpha.size(),BindLexicographicCoder(alpha)) {};
 
     // Generates a sketch from a string
@@ -52,10 +51,10 @@ public:
                             std::placeholders::_1);
     }
     static uint64_t LexicographicCoder( const Alphabet & alpha,
-                                        std::string_view sv);
+                                        const std::string & sv);
 
-    static Alphabet DNA_Alphabet;
-    static Alphabet RNA_Alphabet;
+    static const Alphabet DNA_Alphabet;
+    static const Alphabet RNA_Alphabet;
 
 private:
     const size_t k_;
@@ -65,8 +64,8 @@ private:
     const size_t alphabet_size_;
     HashFunction hasher_;
 
-    void fill_shashVec( std::string_view seq, size_t start, size_t end,
+    void fill_shashVec( const std::string & seq, size_t start, size_t end,
                         std::vector<uint64_t> & vec) const;
 
-    Sketch generate_sketch_impl(std::string_view seq) const;
+    Sketch generate_sketch_impl(const std::string & seq) const;
 };
