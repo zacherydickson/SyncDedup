@@ -21,9 +21,11 @@ add_library(LocalSyncmerMap)
 target_sources(LocalSyncmerMap
     PUBLIC
     FILE_SET HEADERS
+    BASE_DIRS src
     FILES
         src/LocalSyncmerMap.h
 )
+set_target_properties(LocalSyncmerMap PROPERTIES LINKER_LANGUAGE CXX)
 
 add_executable(syncdedup)
 target_sources(syncdedup

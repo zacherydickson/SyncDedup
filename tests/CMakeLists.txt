@@ -30,8 +30,8 @@ target_sources(
     PRIVATE
     testLocalSyncmerMap.cpp
 )
-target_compile_features(TestSketcher PRIVATE cxx_std_17)
-target_link_libraries(TestSketcher
+target_compile_features(TestLocalSyncmerMap PRIVATE cxx_std_17)
+target_link_libraries(TestLocalSyncmerMap
     PRIVATE 
         LocalSyncmerMap
         Catch2::Catch2WithMain
