@@ -17,6 +17,14 @@ target_sources(Sketcher
             src/Sketcher.h
 )
 
+add_library(LocalSyncmerMap)
+target_sources(LocalSyncmerMap
+    PUBLIC
+    FILE_SET HEADERS
+    FILES
+        src/LocalSyncmerMap.h
+)
+
 add_executable(syncdedup)
 target_sources(syncdedup
     PRIVATE
@@ -27,6 +35,7 @@ target_sources(syncdedup
 target_link_libraries(syncdedup
     PRIVATE
         Sketcher
+        LocalSyncmerMap
 )
 
 if(BUILD_TESTING)
