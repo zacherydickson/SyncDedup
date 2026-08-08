@@ -16,31 +16,63 @@ using Location = std::vector<LocationElement>;
 
 class LocalSyncmerMap {
     struct IdentityFunctor {
-        size_t operator()(const uint64_t & a) const {return a; }
+        size_t operator()(const uint64_t & a) const { return a; }
     };
     using HashMapType = std::unordered_map<uint64_t,Location,IdentityFunctor>;
     public:
-        void clear() { data.clear(); } 
-        auto insert(const std::pair<uint64_t,Location> & value) { return data.insert(value); }
-        auto insert(std::pair<uint64_t,Location> && value) { return data.insert(value); }
+        LocalSyncmerMap() : nHit(0) {}
+        void clear();
+        auto insert(const std::pair<uint64_t,Location> & value);
+        auto insert(std::pair<uint64_t,Location> && value);
         auto insert(size_t id, const SketchElement & se);
         void insert(size_t id, const Sketch & sketch);
         size_t erase( const uint64_t & key);
         size_t erase( size_t id, const SketchElement & se);
-        Location & at(const uint64_t & key ) { return data.at(key); }
-        const Location & at(const uint64_t & key ) const { return data.at(key); }
-        Location & at(const SketchElement & se ) { return data.at(se.hash); }
-        const Location & at(const SketchElement & se ) const { return data.at(se.hash); }
-        size_t count( const uint64_t key) const { return data.count(key); }
-        size_t count( const SketchElement & se) const { return data.count(se.hash); }
+        const Location & at(const uint64_t & key ) const {
+            return data.at(key); }
+        const Location & at(const SketchElement & se ) const {
+            return this->at(se.hash); }
+        size_t count( const uint64_t key) const { 
+            return data.count(key); }
+        size_t count( const SketchElement & se) const {
+            return this->count(se.hash); }
         size_t hits() const { return this->nHit; }
-        HashMapType::iterator find( const uint64_t  & key) { return data.find(key); }
-        HashMapType::const_iterator find( const uint64_t  & key) const { return data.find(key); }
+        HashMapType::const_iterator find( const uint64_t  & key) const {
+            return data.find(key); }
+        size_t size() const { 
+            return data.size(); }
+        HashMapType::const_iterator begin() const {
+            return data.begin();
+        }
+        HashMapType::const_iterator cbegin() const {
+            return data.cbegin();
+        }
+        HashMapType::const_iterator end() const {
+            return data.end();
+        }
+        HashMapType::const_iterator cend() const {
+            return data.cend();
+        }
     protected:
         size_t nHit;
         HashMapType data; 
 };
 
+void LocalSyncmerMap::clear() {
+    nHit = 0;
+    data.clear();
+}
+
+
+auto LocalSyncmerMap::insert(const std::pair<uint64_t,Location> & value) {
+    nHit += value.second.size();
+    return data.insert(value);
+}
+
+auto LocalSyncmerMap::insert(std::pair<uint64_t,Location> && value) {
+    nHit += value.second.size();
+    return data.insert(value);
+}
 
 auto LocalSyncmerMap::insert(size_t id, const SketchElement & se) {
     auto it = data.find(se.hash);
@@ -51,6 +83,7 @@ auto LocalSyncmerMap::insert(size_t id, const SketchElement & se) {
         it = data.find(se.hash);
     }
     it->second.push_back({se.position,id});
+    nHit++;
     return std::make_pair(it,bInsert);
 }
 
