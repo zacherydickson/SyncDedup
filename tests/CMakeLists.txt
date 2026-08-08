@@ -41,3 +41,4 @@ target_link_libraries(TestLocalSyncmerMap
 include(CTest)
 include(Catch)
 catch_discover_tests(TestSketcher)
+catch_discover_tests(TestLocalSyncmerMap)
