@@ -1,17 +1,19 @@
-#Syncmer Deduplication
+# Syncmer Deduplication
 
-#Installation
+## Installation
 
-##Requirements
-Requires CMake 3.25+
-Requires zlib 1.2.3+
-Will fetch ![zstr][https://github.com/mateidavid/zstr]
+###  Requirements
+- Requires CMake 3.25+
+- Requires zlib 1.2.3+
+- Will fetch ![zstr][https://github.com/mateidavid/zstr]
 
-##Installation
+### Installation
 ```
 cmake --workflow release
 cmake --install build
 ```
+
+## Description
 
 This program is intended to provide a way of deduplicating reads which combines the best of string deduplication and mapping based deduplication while also handling substitution errors during sequencing.
 
@@ -23,6 +25,6 @@ The concept is to take a sketch of each read where a sketch is the set of bounde
 
 This is the core concept, however UMI's solve this problem completely. So it probably isn't worth pursuing.
 
-#Dev Notes
+# Dev Notes
 
 Testing requires that Catch2 v3+ is installed and findable by CMake
