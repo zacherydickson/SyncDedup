@@ -22,10 +22,11 @@ target_sources(LocalSyncmerMap
     PRIVATE
         src/LocalSyncmerMap.cpp
     PUBLIC
-    FILE_SET HEADERS
-    BASE_DIRS src
-    FILES
-        src/LocalSyncmerMap.h
+        FILE_SET localSyncmerMapHeaders
+        TYPE HEADERS
+        BASE_DIRS src
+        FILES
+            src/LocalSyncmerMap.h
 )
 set_target_properties(LocalSyncmerMap PROPERTIES LINKER_LANGUAGE CXX)
 
@@ -41,9 +42,9 @@ add_library(FastqIO)
 target_sources(FastqIO
     PRIVATE
         src/FastqIO.cpp
-
     PUBLIC
-        FILE_SET HEADERS
+        FILE_SET fastqIOHeaders
+        TYPE HEADERS
         BASE_DIRS src
         FILES
             src/FastqIO.h
