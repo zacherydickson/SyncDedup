@@ -2,9 +2,15 @@
 
 #Installation
 
+##Requirements
 Requires CMake 3.25+
+Requires zlib 1.2.3+
+Will fetch ![zstr][https://github.com/mateidavid/zstr]
+
+##Installation
 ```
 cmake --workflow release
+cmake --install build
 ```
 
 This program is intended to provide a way of deduplicating reads which combines the best of string deduplication and mapping based deduplication while also handling substitution errors during sequencing.

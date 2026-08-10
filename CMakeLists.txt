@@ -19,6 +19,8 @@ target_sources(Sketcher
 
 add_library(LocalSyncmerMap)
 target_sources(LocalSyncmerMap
+    PRIVATE
+        src/LocalSyncmerMap.cpp
     PUBLIC
     FILE_SET HEADERS
     BASE_DIRS src
@@ -26,6 +28,32 @@ target_sources(LocalSyncmerMap
         src/LocalSyncmerMap.h
 )
 set_target_properties(LocalSyncmerMap PROPERTIES LINKER_LANGUAGE CXX)
+
+find_package(ZLIB)
+include(FetchContent)
+FetchContent_Declare(ZStrGitRepo
+  GIT_REPOSITORY    "https://github.com/mateidavid/zstr" # can also be a local filesystem path!
+  GIT_TAG           "master"
+)
+FetchContent_MakeAvailable(ZStrGitRepo) # defines INTERFACE target 'zstr::zstr'
+
+add_library(FastqIO)
+target_sources(FastqIO
+    PRIVATE
+        src/FastqIO.cpp
+
+    PUBLIC
+        FILE_SET HEADERS
+        BASE_DIRS src
+        FILES
+            src/FastqIO.h
+)
+target_link_libraries(FastqIO
+    PRIVATE
+        ZLIB::ZLIB
+        zstr::zstr
+)
+
 
 add_executable(syncdedup)
 target_sources(syncdedup
@@ -38,6 +66,7 @@ target_link_libraries(syncdedup
     PRIVATE
         Sketcher
         LocalSyncmerMap
+        FastqIO
 )
 
 if(BUILD_TESTING)
