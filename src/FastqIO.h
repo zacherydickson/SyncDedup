@@ -10,11 +10,24 @@ struct FastqSegment_t {
     std::string seq;
     std::string desc;
     std::string qual;
+    bool operator==(const FastqSegment_t & other) const ;
+#ifndef NDEBUG 
+    std::string to_string() const;
+#endif
 };
 
 struct FastqTemplate_t {
     std::string name;
     std::vector<FastqSegment_t> segVec;
+    bool operator==(const FastqTemplate_t & other) const;
+#ifndef NDEBUG 
+    std::string to_string() const;
+#endif
+};
+
+struct FastqStreamPair_t {
+    std::unique_ptr< std::iostream > first;
+    std::unique_ptr< std::iostream > second;
 };
 
 class FastqIO {
@@ -22,34 +35,43 @@ class FastqIO {
         using istream_ptr = std::unique_ptr<std::istream>;
         using ostream_ptr = std::unique_ptr<std::ostream>;
         using iostream_ptr = std::unique_ptr<std::iostream>;
-        enum IO_MODE {
-            IO_IN,
-            IO_OUT,
-            IO_NONE //Used to indicate the Object is in a state where reading/writing is impossible
+        enum IO_FLAGS {
+            IO_IN = 0x1,
+            IO_OUT = 0x2,
+            IO_BAD = 0x4,
+            IO_INJECTED = 0x8
         };
     protected:
         FastqIO(istream_ptr && in1, istream_ptr && in2,
-                ostream_ptr && out1, ostream_ptr && out2, bool bInterleaved);
+                ostream_ptr && out1, ostream_ptr && out2, bool bInterleaved,
+                bool bInjected = false);
     public:
         FastqIO() = delete;
         FastqIO(FastqIO &) = delete;
         FastqIO(FastqIO &&);
-        FastqIO(const std::string & filepath, bool bInterleaved = false,
-                IO_MODE = IO_IN);
+        FastqIO(const std::string & filepath, IO_FLAGS mode,
+                bool bInterleaved = false);
         FastqIO(const std::string & filepath1, const std::string filepath2,
-                IO_MODE = IO_IN);
-        FastqIO(iostream_ptr && file1, bool bInterleaved = false,
-                IO_MODE = IO_IN);
+                IO_FLAGS mode);
+        FastqIO(iostream_ptr && file1, IO_FLAGS mode,
+                bool bInterleaved = false);
         FastqIO(iostream_ptr && file1, iostream_ptr && file2,
-                IO_MODE = IO_IN);
+                IO_FLAGS mode);
+        FastqIO(FastqStreamPair_t && sp, IO_FLAGS mode) :
+            FastqIO(std::move(sp.first),std::move(sp.second),mode) {}
 
         bool next_template(FastqTemplate_t &);
         bool write(const FastqTemplate_t & fqtemplate);
-        bool good() { return openmode_ != IO_NONE; } 
-        bool bad() { return openmode_ == IO_NONE; } 
-        IO_MODE get_mode() { return openmode_; }
+
+        bool isGood() { return !(flags_ & IO_BAD); } 
+        bool isBad() { return (flags_ & IO_BAD); } 
+        bool canWrite() { return (flags_ & (IO_OUT | IO_BAD)) == IO_OUT; }
+        bool canRead() { return (flags_ & (IO_IN | IO_BAD)) == IO_IN; }
+        bool fromInjection() { return flags_ & IO_INJECTED; }
         bool isInterleaved() { return bInterleaved_; }
         bool isPaired() { return bPaired_; }
+
+        FastqStreamPair_t releaseStreams() &&;
     protected:
         struct FastqReader {
             bool next_template(FastqTemplate_t & fqt); 
@@ -64,7 +86,7 @@ class FastqIO {
     protected:
         const bool bInterleaved_;
         const bool bPaired_;
-        IO_MODE openmode_;
+        uint8_t flags_;
         FastqReader reader1_;
         FastqReader reader2_;
         FastqWriter writer1_;

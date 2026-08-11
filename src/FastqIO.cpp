@@ -1,19 +1,50 @@
 #include "FastqIO.h"
 
+#include <algorithm>
 #include <cassert>
 #include <limits>
 #include <zlib.h>
 #include <zstr.hpp>
 
+bool FastqSegment_t::operator==(const FastqSegment_t & other) const {
+    return  ( seq == other.seq ) &&
+            ( desc == other.desc ) &&
+            ( qual == other.qual );
+}
+
+#ifndef NDEBUG
+std::string FastqSegment_t::to_string() const {
+    return desc + ", " + seq + ", " + qual;
+}
+#endif
+
+bool FastqTemplate_t::operator==(const FastqTemplate_t & other) const {
+    return  ( name == other.name ) &&
+            std::equal(segVec.begin(),segVec.end(),other.segVec.begin());
+}
+
+#ifndef NDEBUG
+std::string FastqTemplate_t::to_string() const {
+    std::string str = name + ":{";
+    for(const auto & seg : segVec){
+        str += "[" + seg.to_string() + "] ";
+    }
+    return str + "}";
+}
+#endif
+
 FastqIO::FastqIO(   FastqIO::istream_ptr && in1, FastqIO::istream_ptr && in2,
                     FastqIO::ostream_ptr && out1, FastqIO::ostream_ptr && out2,
-                    bool bInterleaved) 
+                    bool bInterleaved, bool bInjected) 
     :   bInterleaved_(bInterleaved),
         bPaired_(bInterleaved || (in1 && in2) || (out1 && out2)),
-        openmode_(in1 ? IO_IN : IO_OUT),
+        flags_(in1 ? IO_IN : IO_OUT),
         reader1_({std::move(in1)}), reader2_({std::move(in1)}),
         writer1_({std::move(out1)}), writer2_({std::move(out1)})
 {
+    if(bInjected) {
+        flags_ |= IO_INJECTED;
+    }
 #ifndef NDEBUG
     //Things that should be true due to the way the code is written
     size_t inCount = bool(reader1_.pfile) + bool(reader2_.pfile);
@@ -27,26 +58,26 @@ FastqIO::FastqIO(   FastqIO::istream_ptr && in1, FastqIO::istream_ptr && in2,
     if(writer2_.pfile) { assert(outCount == 2); }
 #endif
     //Initial checks to make sure the file can be read from / written to
-    if(reader1_.pfile && !(*(reader1_.pfile))) { openmode_ = IO_NONE; }
-    if(reader2_.pfile && !(*(reader2_.pfile))) { openmode_ = IO_NONE; }
-    if(writer1_.pfile && !(*(writer1_.pfile))) { openmode_ = IO_NONE; }
-    if(writer2_.pfile && !(*(writer2_.pfile))) { openmode_ = IO_NONE; }
+    if(reader1_.pfile && !(*(reader1_.pfile))) { flags_ |= IO_BAD; }
+    if(reader2_.pfile && !(*(reader2_.pfile))) { flags_ |= IO_BAD; }
+    if(writer1_.pfile && !(*(writer1_.pfile))) { flags_ |= IO_BAD; }
+    if(writer2_.pfile && !(*(writer2_.pfile))) { flags_ |= IO_BAD; }
 }
 
 
 FastqIO::FastqIO(FastqIO && other)
     :   bInterleaved_(other.bInterleaved_),
         bPaired_(other.bPaired_),
-        openmode_(other.openmode_),
+        flags_(other.flags_),
         reader1_(std::move(other.reader1_)), reader2_(std::move(other.reader2_)),
         writer1_(std::move(other.writer1_)), writer2_(std::move(other.writer2_))
 {
-    other.openmode_ = (IO_NONE);
+    other.flags_ |= IO_BAD;
 }
 
 
-FastqIO::FastqIO(   const std::string & filepath, bool bInterleaved,
-                    IO_MODE om) 
+FastqIO::FastqIO(   const std::string & filepath, IO_FLAGS om, 
+                    bool bInterleaved)
     : FastqIO(  (om == IO_IN) ? FastqIO::gzopenpath_in(filepath) : NULL,
                 NULL,
                 (om == IO_OUT) ? FastqIO::gzopenpath_out(filepath) : NULL,
@@ -54,43 +85,43 @@ FastqIO::FastqIO(   const std::string & filepath, bool bInterleaved,
                 bInterleaved ) {}
 
 FastqIO::FastqIO(const std::string & filepath1, const std::string filepath2,
-        IO_MODE om)
+        IO_FLAGS om)
     : FastqIO(  (om == IO_IN) ? FastqIO::gzopenpath_in(filepath1) : NULL,
                 (om == IO_IN) ? FastqIO::gzopenpath_in(filepath2) : NULL,
                 (om == IO_OUT) ? FastqIO::gzopenpath_out(filepath1) : NULL,
                 (om == IO_OUT) ? FastqIO::gzopenpath_out(filepath2) : NULL,
                 false ) {}
 
-FastqIO::FastqIO(   FastqIO::iostream_ptr && file1, bool bInterleaved,
-                    IO_MODE om) 
+FastqIO::FastqIO(   FastqIO::iostream_ptr && file1, IO_FLAGS om,
+                    bool bInterleaved)
     : FastqIO(  (om == IO_IN) ? std::move(file1) : NULL,
                 NULL,
                 (om == IO_OUT) ? std::move(file1) : NULL,
                 NULL,
-                bInterleaved ) {}
+                bInterleaved, true ) {}
 
 FastqIO::FastqIO(   FastqIO::iostream_ptr && file1, FastqIO::iostream_ptr && file2,
-                    IO_MODE om)
+                    IO_FLAGS om)
     : FastqIO(  (om == IO_IN) ? std::move(file1) : NULL,
                 (om == IO_IN) ? std::move(file2) : NULL,
                 (om == IO_OUT) ? std::move(file1) : NULL,
                 (om == IO_OUT) ? std::move(file2) : NULL,
-                false ) {}
+                false, true) {}
     
 bool FastqIO::FastqReader::next_template(FastqTemplate_t & fqt) {
     FastqSegment_t & seg = fqt.segVec.emplace_back();
     *pfile >> fqt.name;
     if(fqt.name.length() > 1) {
         fqt.name = fqt.name.substr(1);
-        size_t descStart = fqt.name.find(' ');
-        if(descStart != std::string::npos){
-            seg.desc = fqt.name.substr(descStart+1);
-            fqt.name = fqt.name.substr(0,descStart);
-        } else {
-            seg.desc = "";
-        }
+    }
+    if(pfile->peek() == ' '){
+        *pfile >> seg.desc;
+    } else {
+        seg.desc = "";
     }
     *pfile >> seg.seq;
+    //Need to get past the whitespace at the end of the sequence 
+    pfile->get();
     pfile->ignore(std::numeric_limits<std::streamsize>::max(),'\n');
     *pfile >> seg.qual;
     if(!(*pfile)) { return false; }
@@ -98,10 +129,13 @@ bool FastqIO::FastqReader::next_template(FastqTemplate_t & fqt) {
 }
 
 bool FastqIO::next_template(FastqTemplate_t & fqt) {
-    if(openmode_ != IO_IN){
+    if(!(flags_ & IO_IN)){
         throw std::logic_error("Attempt to read from a FastqIO object not opened for input");
     }
-    openmode_ = IO_NONE;
+    if(flags_ & IO_BAD) {
+        throw std::logic_error("Attempt to read from a FastqIO object in a bad state");
+    }
+    flags_ |= IO_BAD;
     if(!reader1_.next_template(fqt)){ return false; }
     if(bPaired_){
         FastqTemplate_t read;
@@ -116,7 +150,8 @@ bool FastqIO::next_template(FastqTemplate_t & fqt) {
         fqt.segVec.push_back(std::move(read.segVec.front()));
         read.segVec.clear();
     }
-    openmode_ = IO_IN;
+    uint8_t mask = ~IO_BAD;
+    flags_ &= mask;
     return true;
 }
 
@@ -126,6 +161,7 @@ bool FastqIO::FastqWriter::write(const FastqTemplate_t & fqt) {
         if(!pfile) { return false; }
         if(seg.desc.length()){
             *pfile << ' ' << seg.desc;
+            if(!pfile) { return false; }
         }
         *pfile << '\n' << seg.seq << "\n+\n" << seg.qual << '\n';
         if(!pfile) { return false; }
@@ -134,21 +170,25 @@ bool FastqIO::FastqWriter::write(const FastqTemplate_t & fqt) {
 }
 
 bool FastqIO::write(const FastqTemplate_t & fqtemplate) {
-    if(openmode_ != IO_OUT){
-        throw std::logic_error("Attempt to write from a FastqIO object not opened for output");
+    if(!(flags_ & IO_OUT)){
+        throw std::logic_error("Attempt to write to a FastqIO object not opened for output");
     }
-    openmode_ = IO_NONE;
-    if(bInterleaved_ || !bPaired_){
-        return writer1_.write(fqtemplate); 
+    if(flags_ & IO_BAD) {
+        throw std::logic_error("Attempt to write to a FastqIO object in a bad state");
     }
-    FastqTemplate_t fqt = {fqtemplate.name,{{}}};
+    flags_ |= IO_BAD;
     bool bPass = true;
-    for(int i = 0; i < 2; i++){
-        fqt.segVec[0] = fqtemplate.segVec[i];
-        FastqWriter & writer = (i == 0) ? writer1_ : writer2_;
-        bPass &= writer.write(fqt);
+    if(bInterleaved_ || !bPaired_){
+        bPass = writer1_.write(fqtemplate); 
+    } else {
+        FastqTemplate_t fqt = {fqtemplate.name,{{}}};
+        for(int i = 0; i < 2; i++){
+            fqt.segVec[0] = fqtemplate.segVec[i];
+            FastqWriter & writer = (i == 0) ? writer1_ : writer2_;
+            bPass &= writer.write(fqt);
+        }
     }
-    if(bPass) { openmode_ = IO_OUT; }
+    if(bPass) { uint8_t mask = ~IO_BAD; flags_ &= mask; }
     return bPass;
 }
 
@@ -172,4 +212,56 @@ FastqIO::ostream_ptr FastqIO::gzopenpath_out(const std::string & path)
         result.reset(new zstr::ofstream(path));
     }
     return result;
+}
+
+//If the object was instantiated through stream injection
+//the underlying streams can be released as they must have originally been 
+//iostream objects
+//The strategy is to check for injectable initialization, then attempt to
+// dynamic cast back to iostream, if successful then ownership is transferred 
+// to the return object
+//Throws logic_error if called on a non-injected object
+//Throws runtime error if dynamic_cast fails
+FastqStreamPair_t FastqIO::releaseStreams() && {
+    if(!(flags_ & IO_INJECTED)) {
+        throw std::logic_error("Call to releaseStreams for a fastq IO handler which was not constructed through stream injection");
+    }
+    FastqStreamPair_t streamPair;
+    if(flags_ & IO_IN) { //Release the reader streams
+        std::iostream * p = dynamic_cast<std::iostream*>(reader1_.pfile.get());
+        if(!p){
+            throw std::runtime_error("Unable to reverse cast reader1");
+        }
+        reader1_.pfile.release();
+        streamPair.first.reset(p);
+        p = NULL;
+        if(reader2_.pfile) {
+            p = dynamic_cast<std::iostream*>(reader2_.pfile.get());
+            if(!p){
+                throw std::runtime_error("Unable to reverse cast reader2");
+            }
+            reader2_.pfile.release();
+            streamPair.second.reset(p);
+            p = NULL;
+        }
+    } else { //Release the writer streams
+        std::iostream * p = dynamic_cast<std::iostream*>(writer1_.pfile.get());
+        if(!p){
+            throw std::runtime_error("Unable to reverse cast writer1");
+        }
+        writer1_.pfile.release();
+        streamPair.first.reset(p);
+        p = NULL;
+        if(writer2_.pfile) {
+            p = dynamic_cast<std::iostream*>(writer2_.pfile.get());
+            if(!p){
+                throw std::runtime_error("Unable to reverse cast writer2");
+            }
+            writer2_.pfile.release();
+            streamPair.second.reset(p);
+            p = NULL;
+        }
+    }
+    flags_ |= IO_BAD;
+    return streamPair;
 }
