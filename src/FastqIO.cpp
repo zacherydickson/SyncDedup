@@ -90,7 +90,12 @@ FastqIO::FastqIO(const std::string & filepath1, const std::string filepath2,
                 (om == IO_IN) ? FastqIO::gzopenpath_in(filepath2) : NULL,
                 (om == IO_OUT) ? FastqIO::gzopenpath_out(filepath1) : NULL,
                 (om == IO_OUT) ? FastqIO::gzopenpath_out(filepath2) : NULL,
-                false ) {}
+                false )
+{
+    if(filepath1 == filepath2) {
+        throw std::invalid_argument("Paired fastq files must not be the same file");
+    }
+}
 
 FastqIO::FastqIO(   FastqIO::iostream_ptr && file1, IO_FLAGS om,
                     bool bInterleaved)
@@ -111,6 +116,9 @@ FastqIO::FastqIO(   FastqIO::iostream_ptr && file1, FastqIO::iostream_ptr && fil
 FastqIO::READ_RESULT FastqIO::FastqReader::next_template(FastqTemplate_t & fqt) {
     FastqSegment_t & seg = fqt.segVec.emplace_back();
     *pfile >> fqt.name;
+#ifndef NDEBUG
+    if(!(*pfile)) { return pfile->eof() ? READ_EOF : READ_FAIL; }
+#endif
     if(fqt.name.length() > 1) {
         if(fqt.name[0] != '@') { //Check for valid formating
             return READ_MISSING_LEADER1;
@@ -119,18 +127,33 @@ FastqIO::READ_RESULT FastqIO::FastqReader::next_template(FastqTemplate_t & fqt) 
     }
     if(pfile->peek() == ' '){
         *pfile >> seg.desc;
+#ifndef NDEBUG
+        if(!(*pfile)) { return pfile->eof() ? READ_EOF : READ_FAIL; }
+#endif
     } else {
         seg.desc = "";
     }
     *pfile >> seg.seq;
+#ifndef NDEBUG
+    if(!(*pfile)) { return pfile->eof() ? READ_EOF : READ_FAIL; }
+#endif
     //Need to get past the whitespace at the end of the sequence 
     pfile->get();
+#ifndef NDEBUG
+    if(!(*pfile)) { return pfile->eof() ? READ_EOF : READ_FAIL; }
+#endif
     if(pfile->peek() != '+') { // Check for valid formating
         return READ_MISSING_LEADER2;
     }
     pfile->ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+#ifndef NDEBUG
+    if(!(*pfile)) { return pfile->eof() ? READ_EOF : READ_FAIL; }
+#endif
     *pfile >> seg.qual;
     if(!(*pfile)) { return pfile->eof() ? READ_EOF : READ_FAIL; }
+    if(seg.qual.length() != seg.seq.length()){
+        return READ_SEQ_QUAL_LEN;
+    }
     return READ_PASS;
 }
 

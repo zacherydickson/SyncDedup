@@ -47,7 +47,8 @@ class FastqIO {
             READ_MISSING_LEADER1 = 2,
             READ_MISSING_LEADER2 = 3,
             READ_FAIL = 4,
-            READ_MISPAIRED = 5
+            READ_MISPAIRED = 5,
+            READ_SEQ_QUAL_LEN = 6
         };
     protected:
         FastqIO(istream_ptr && in1, istream_ptr && in2,
