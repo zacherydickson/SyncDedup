@@ -41,6 +41,14 @@ class FastqIO {
             IO_BAD = 0x4,
             IO_INJECTED = 0x8
         };
+        enum READ_RESULT {
+            READ_PASS = 0,
+            READ_EOF = 1,
+            READ_MISSING_LEADER1 = 2,
+            READ_MISSING_LEADER2 = 3,
+            READ_FAIL = 4,
+            READ_MISPAIRED = 5
+        };
     protected:
         FastqIO(istream_ptr && in1, istream_ptr && in2,
                 ostream_ptr && out1, ostream_ptr && out2, bool bInterleaved,
@@ -60,7 +68,7 @@ class FastqIO {
         FastqIO(FastqStreamPair_t && sp, IO_FLAGS mode) :
             FastqIO(std::move(sp.first),std::move(sp.second),mode) {}
 
-        bool next_template(FastqTemplate_t &);
+        READ_RESULT next_template(FastqTemplate_t &);
         bool write(const FastqTemplate_t & fqtemplate);
 
         bool isGood() { return !(flags_ & IO_BAD); } 
@@ -74,7 +82,7 @@ class FastqIO {
         FastqStreamPair_t releaseStreams() &&;
     protected:
         struct FastqReader {
-            bool next_template(FastqTemplate_t & fqt); 
+            READ_RESULT next_template(FastqTemplate_t & fqt); 
             istream_ptr pfile;
         };
         struct FastqWriter {

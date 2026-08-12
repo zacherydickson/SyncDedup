@@ -39,8 +39,8 @@ FastqIO::FastqIO(   FastqIO::istream_ptr && in1, FastqIO::istream_ptr && in2,
     :   bInterleaved_(bInterleaved),
         bPaired_(bInterleaved || (in1 && in2) || (out1 && out2)),
         flags_(in1 ? IO_IN : IO_OUT),
-        reader1_({std::move(in1)}), reader2_({std::move(in1)}),
-        writer1_({std::move(out1)}), writer2_({std::move(out1)})
+        reader1_({std::move(in1)}), reader2_({std::move(in2)}),
+        writer1_({std::move(out1)}), writer2_({std::move(out2)})
 {
     if(bInjected) {
         flags_ |= IO_INJECTED;
@@ -108,10 +108,13 @@ FastqIO::FastqIO(   FastqIO::iostream_ptr && file1, FastqIO::iostream_ptr && fil
                 (om == IO_OUT) ? std::move(file2) : NULL,
                 false, true) {}
     
-bool FastqIO::FastqReader::next_template(FastqTemplate_t & fqt) {
+FastqIO::READ_RESULT FastqIO::FastqReader::next_template(FastqTemplate_t & fqt) {
     FastqSegment_t & seg = fqt.segVec.emplace_back();
     *pfile >> fqt.name;
     if(fqt.name.length() > 1) {
+        if(fqt.name[0] != '@') { //Check for valid formating
+            return READ_MISSING_LEADER1;
+        }
         fqt.name = fqt.name.substr(1);
     }
     if(pfile->peek() == ' '){
@@ -122,13 +125,16 @@ bool FastqIO::FastqReader::next_template(FastqTemplate_t & fqt) {
     *pfile >> seg.seq;
     //Need to get past the whitespace at the end of the sequence 
     pfile->get();
+    if(pfile->peek() != '+') { // Check for valid formating
+        return READ_MISSING_LEADER2;
+    }
     pfile->ignore(std::numeric_limits<std::streamsize>::max(),'\n');
     *pfile >> seg.qual;
-    if(!(*pfile)) { return false; }
-    return true;
+    if(!(*pfile)) { return pfile->eof() ? READ_EOF : READ_FAIL; }
+    return READ_PASS;
 }
 
-bool FastqIO::next_template(FastqTemplate_t & fqt) {
+FastqIO::READ_RESULT FastqIO::next_template(FastqTemplate_t & fqt) {
     if(!(flags_ & IO_IN)){
         throw std::logic_error("Attempt to read from a FastqIO object not opened for input");
     }
@@ -136,23 +142,24 @@ bool FastqIO::next_template(FastqTemplate_t & fqt) {
         throw std::logic_error("Attempt to read from a FastqIO object in a bad state");
     }
     flags_ |= IO_BAD;
-    if(!reader1_.next_template(fqt)){ return false; }
+    READ_RESULT res;
+    res = reader1_.next_template(fqt);
+    if(res != READ_PASS){ return res; }
     if(bPaired_){
         FastqTemplate_t read;
         if(bInterleaved_){
-            if(!reader1_.next_template(read)) { return false; }
+            res = reader1_.next_template(read);
         } else {
-            if(!reader2_.next_template(read)) { return false; }
+            res = reader2_.next_template(read);
         }
-        if(read.name != fqt.name) {
-            throw std::invalid_argument("Paired Reads are not properly paired");
-        }
+        if(res != READ_PASS) { return res; }
+        if(read.name != fqt.name) { return READ_MISPAIRED; }
         fqt.segVec.push_back(std::move(read.segVec.front()));
         read.segVec.clear();
     }
     uint8_t mask = ~IO_BAD;
     flags_ &= mask;
-    return true;
+    return READ_PASS;
 }
 
 bool FastqIO::FastqWriter::write(const FastqTemplate_t & fqt) {
@@ -175,6 +182,9 @@ bool FastqIO::write(const FastqTemplate_t & fqtemplate) {
     }
     if(flags_ & IO_BAD) {
         throw std::logic_error("Attempt to write to a FastqIO object in a bad state");
+    }
+    if(bPaired_ && fqtemplate.segVec.size() % 2 != 0 ){
+        throw std::invalid_argument("Attempt to paired write an odd number of segments");
     }
     flags_ |= IO_BAD;
     bool bPass = true;
