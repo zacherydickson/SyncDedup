@@ -10,8 +10,9 @@
 ### Installation
 ```
 cmake --workflow release
-cmake --install build
+cmake --install build --prefix your_install_dir
 ```
+The default installation directory is the project directory
 
 ## Description
 
