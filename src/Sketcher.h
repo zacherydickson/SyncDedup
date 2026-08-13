@@ -33,6 +33,8 @@ public:
                 HashFunction hasher = Sketcher::FNVHash);
     Sketcher(   size_t k, size_t s, double d, const Alphabet & alpha) :
         Sketcher(k,s,d,alpha.size(),BindLexicographicCoder(alpha)) {};
+    //TODO: Implement Copy constructor
+    Sketcher( const Sketcher & other);
 
     // Generates a sketch from a string
     //  (accepts rvalue/lvalue, uses move semantics)
@@ -48,6 +50,10 @@ public:
     }
 
     //TODO: have this account for the sumbsampling
+    // Can use Irwinn-Hall density with shifted and rescaled distances
+    // E(OL p=1/ d)  = sum [n=1,k-1] p * (1-p)^n-1 E(O_n)
+    // and E(O_n) = 1/(w^n * (n+1)!) * sum [j=0,n] (-1)^j * (n choose j) * ((k - n - j * w)_+)^(n+1
+    // TODO: Emprically test values of k,s and d to see if there are patterns
     double ExpectedSyncmerOverlap() const {
         return double(k_ + s_ - 1) / 2.0;
     }
