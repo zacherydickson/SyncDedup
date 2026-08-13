@@ -228,21 +228,43 @@ bool FastqIO::write(const FastqTemplate_t & fqtemplate) {
 FastqIO::istream_ptr FastqIO::gzopenpath_in(const std::string & path)
 {
     FastqIO::istream_ptr result = NULL;
+    std::string msg = "";
     if(path == "-") {
         result.reset(new zstr::istream(std::cin));
     } else {
-        result.reset(new zstr::ifstream(path));
+        try {
+            result.reset(new zstr::ifstream(path));
+        } catch ( std::exception & e ) {
+            result.reset(NULL);
+            msg = e.what();
+        }
+    }
+    if(!result) {
+        msg = "Could not open " + path + " for reading: " + msg;
+        throw std::invalid_argument(msg);
     }
     return result;
 }
 
+//Does not check if a file exists, and therefore will overwrite if given an existing
+// file
 FastqIO::ostream_ptr FastqIO::gzopenpath_out(const std::string & path)
 {
     FastqIO::ostream_ptr result = NULL;
+    std::string msg = "";
     if(path == "-") {
         result.reset(new zstr::ostream(std::cout));
     } else {
-        result.reset(new zstr::ofstream(path));
+        try {
+            result.reset(new zstr::ofstream(path));
+        } catch ( std::exception & e ) {
+            result.reset(NULL);
+            msg = e.what();
+        }
+    }
+    if(!result) {
+        msg = "Could not open " + path + " for writing: " + msg;
+        throw std::invalid_argument(msg);
     }
     return result;
 }

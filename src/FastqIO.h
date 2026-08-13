@@ -26,8 +26,8 @@ struct FastqTemplate_t {
 };
 
 struct FastqStreamPair_t {
-    std::unique_ptr< std::iostream > first;
-    std::unique_ptr< std::iostream > second;
+    std::unique_ptr<std::iostream> first;
+    std::unique_ptr<std::iostream> second;
 };
 
 class FastqIO {
