@@ -326,3 +326,12 @@ FastqStreamPair_t FastqIO::releaseStreams() && {
     flags_ |= IO_BAD;
     return streamPair;
 }
+
+void FastqIO::close() && {
+    //Unset all other flags
+    flags_ = IO_BAD;
+    if(reader1_.pfile) { reader1_.pfile.reset(NULL); }
+    if(reader2_.pfile) { reader2_.pfile.reset(NULL); }
+    if(writer1_.pfile) { writer1_.pfile.reset(NULL); }
+    if(writer2_.pfile) { writer2_.pfile.reset(NULL); }
+}

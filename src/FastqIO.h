@@ -81,6 +81,7 @@ class FastqIO {
         bool isPaired() { return bPaired_; }
 
         FastqStreamPair_t releaseStreams() &&;
+        void close() &&;
     protected:
         struct FastqReader {
             READ_RESULT next_template(FastqTemplate_t & fqt); 
