@@ -47,6 +47,11 @@ public:
         return generate_sketch_impl(sequence);
     }
 
+    //TODO: have this account for the sumbsampling
+    double ExpectedSyncmerOverlap() const {
+        return double(k_ + s_ - 1) / 2.0;
+    }
+
     static const HashFunction FNVHash;
     static HashFunction BindLexicographicCoder(const Alphabet & alpha)
     {
