@@ -80,7 +80,7 @@ FastqIO::FastqIO(   const std::string & filepath, IO_FLAGS om,
                     bool bInterleaved)
     : FastqIO(  (om == IO_IN) ? FastqIO::gzopenpath_in(filepath) : NULL,
                 NULL,
-                (om == IO_OUT) ? FastqIO::gzopenpath_out(filepath) : NULL,
+                (om == IO_OUT) ? FastqIO::gzopenpath_out(filepath,Z_DEFAULT_COMPRESSION) : NULL,
                 NULL,
                 bInterleaved ) {}
 
@@ -88,8 +88,8 @@ FastqIO::FastqIO(const std::string & filepath1, const std::string filepath2,
         IO_FLAGS om)
     : FastqIO(  (om == IO_IN) ? FastqIO::gzopenpath_in(filepath1) : NULL,
                 (om == IO_IN) ? FastqIO::gzopenpath_in(filepath2) : NULL,
-                (om == IO_OUT) ? FastqIO::gzopenpath_out(filepath1) : NULL,
-                (om == IO_OUT) ? FastqIO::gzopenpath_out(filepath2) : NULL,
+                (om == IO_OUT) ? FastqIO::gzopenpath_out(filepath1,Z_DEFAULT_COMPRESSION) : NULL,
+                (om == IO_OUT) ? FastqIO::gzopenpath_out(filepath2,Z_DEFAULT_COMPRESSION) : NULL,
                 false )
 {
     if(filepath1 == filepath2) {
@@ -248,15 +248,21 @@ FastqIO::istream_ptr FastqIO::gzopenpath_in(const std::string & path)
 
 //Does not check if a file exists, and therefore will overwrite if given an existing
 // file
-FastqIO::ostream_ptr FastqIO::gzopenpath_out(const std::string & path)
+FastqIO::ostream_ptr FastqIO::gzopenpath_out(   const std::string & path,
+                                                int compression)
 {
+    if(compression == Z_DEFAULT_COMPRESSION) {
+        if(path.find(".gz",path.length()-3) == std::string::npos) {
+            compression = Z_NO_COMPRESSION;
+        }
+    }
     FastqIO::ostream_ptr result = NULL;
     std::string msg = "";
     if(path == "-") {
-        result.reset(new zstr::ostream(std::cout));
+        result.reset(new zstr::ostream(std::cout,zstr::default_buff_size,compression));
     } else {
         try {
-            result.reset(new zstr::ofstream(path));
+            result.reset(new zstr::ofstream(path, std::ios_base::out, compression));
         } catch ( std::exception & e ) {
             result.reset(NULL);
             msg = e.what();

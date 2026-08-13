@@ -91,7 +91,7 @@ class FastqIO {
             ostream_ptr pfile;
         };
         static istream_ptr gzopenpath_in(const std::string & path);
-        static ostream_ptr gzopenpath_out(const std::string & path);
+        static ostream_ptr gzopenpath_out(const std::string & path, int compression);
     protected:
         const bool bInterleaved_;
         const bool bPaired_;
