@@ -74,11 +74,22 @@ class FastqIO {
 
         bool isGood() { return !(flags_ & IO_BAD); } 
         bool isBad() { return (flags_ & IO_BAD); } 
+        //Add Tests for isWriter and isReader
+        bool isWriter() { return (flags_ & IO_OUT); }
+        bool isReader() { return (flags_ & IO_IN); }
         bool canWrite() { return (flags_ & (IO_OUT | IO_BAD)) == IO_OUT; }
         bool canRead() { return (flags_ & (IO_IN | IO_BAD)) == IO_IN; }
         bool fromInjection() { return flags_ & IO_INJECTED; }
         bool isInterleaved() { return bInterleaved_; }
         bool isPaired() { return bPaired_; }
+
+        //TODO: Implement these, the former returns READ_PASS if it was able to read all requested
+        //templates, or the first error it encountered otherwise
+        //The others should be implemented to match the behaviour of tell[pg] and seek[pg] from [oi]stream
+        READ_RESULT skip_templates(size_t n = 1);
+        std::pair<size_t,size_t> tell() const;
+        void seek(size_t pos);
+        void seek(size_t off, std::ios_base::seekdir dir);
 
         FastqStreamPair_t releaseStreams() &&;
         void close() &&;
