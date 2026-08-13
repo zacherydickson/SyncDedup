@@ -68,8 +68,8 @@ target_sources(CTPL
         TYPE HEADERS
         BASE_DIRS CTPL
         FILES
-            CTPL/ctpl.h
             CTPL/ctpl_stl.h
+            CTPL/ctpl.h
 )
 set_target_properties(CTPL PROPERTIES LINKER_LANGUAGE CXX)
 
@@ -79,14 +79,14 @@ target_sources(SketchHashFactory
     PRIVATE
         src/SketchHashFactory.cpp
     PUBLIC
-        FILE_SET fastqIOHeaders
+    FILE_SET sketchHashFactoryHeaders
         TYPE HEADERS
         BASE_DIRS src
         FILES
             src/SketchHashFactory.h
 )
 target_link_libraries(SketchHashFactory
-    PRIVATE
+    PUBLIC
         CTPL
         FastqIO
         LocalSyncmerMap
@@ -119,9 +119,12 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 install(
-    TARGETS syncdedup Sketcher
-    FILE_SET
-        sketcherHeaders
-        fastqIOHeader
-        localSyncmerMapHeaders
+    TARGETS
+        syncdedup
+        Sketcher
+        FastqIO
+        LocalSyncmerMap
+        FILE_SET sketcherHeaders
+        FILE_SET fastqIOHeaders
+        FILE_SET localSyncmerMapHeaders
 )
