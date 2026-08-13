@@ -173,9 +173,14 @@ SCENARIO("Handler Construction with valid files", "[FastqIO][Construction]" ) {
         THEN("The object can be constructed") {
             std::unique_ptr<FastqIO> handler_ptr;
             REQUIRE_NOTHROW( handler_ptr = std::make_unique<FastqIO>(path,mode,bInterleaved) );
-            AND_THEN("The Handler supports the correct operations") {
+            AND_THEN("The Handler is in the correct state") {
+                REQUIRE( handler_ptr->isGood() );
+                REQUIRE( !handler_ptr->isBad() );
                 REQUIRE( handler_ptr->canWrite() == (mode == FastqIO::IO_OUT) );
-                REQUIRE( handler_ptr->canRead() == (mode == FastqIO::IO_IN));
+                REQUIRE( handler_ptr->canRead() == (mode == FastqIO::IO_IN) );
+                REQUIRE( !handler_ptr->fromInjection() );
+                REQUIRE( handler_ptr->isInterleaved() == bInterleaved );
+                REQUIRE( handler_ptr->isPaired() == bInterleaved );
             }
         }
     }
@@ -187,9 +192,14 @@ SCENARIO("Handler Construction with valid files", "[FastqIO][Construction]" ) {
         THEN("The object can be constructed") {
             std::unique_ptr<FastqIO> handler_ptr;
             REQUIRE_NOTHROW( handler_ptr = std::make_unique<FastqIO>(path1,path2,mode) );
-            AND_THEN("The Handler supports the correct operations") {
+            AND_THEN("The Handler is in the correct state") {
+                REQUIRE( handler_ptr->isGood() );
+                REQUIRE( !handler_ptr->isBad() );
                 REQUIRE( handler_ptr->canWrite() == (mode == FastqIO::IO_OUT) );
-                REQUIRE( handler_ptr->canRead() == (mode == FastqIO::IO_IN));
+                REQUIRE( handler_ptr->canRead() == (mode == FastqIO::IO_IN) );
+                REQUIRE( !handler_ptr->fromInjection() );
+                REQUIRE( !handler_ptr->isInterleaved() );
+                REQUIRE( handler_ptr->isPaired() );
             }
         }
     }
@@ -536,7 +546,7 @@ SCENARIO ("Round Trip with temporary files", "[FastqIO][Reading][Writing]") {
         REQUIRE( out_ptr->canWrite() );
         WHEN("The template is successfully written to an output handler"){
             REQUIRE ( out_ptr->write(initFqt1pair) );
-            out_ptr.reset(NULL);
+            std::move(*out_ptr).close(); //Explicitly close the output handler prior to reading
             AND_WHEN("An input handler is constructed from the files"){
                 std::unique_ptr<FastqIO> in_ptr ( (nStream == 1) ?
                     new FastqIO(tf1.path().string(),FastqIO::IO_IN,bInterleaved) :
@@ -550,6 +560,46 @@ SCENARIO ("Round Trip with temporary files", "[FastqIO][Reading][Writing]") {
                         REQUIRE ( fqt == ( (in_ptr->isPaired()) ? initFqt1pair : initFqt1fwd) );
                     }
                 }
+            }
+        }
+    }
+}
+
+SCENARIO ("Closing a FastqIO handler","[FastqIO]") {
+    auto mode = GENERATE(FastqIO::IO_OUT, FastqIO::IO_IN);
+    INFO("Given: mode is " << mode);
+    GIVEN("A valid handler") {
+        FastqIO handler(constructSS(),mode);
+        REQUIRE( handler.canWrite() == (mode == FastqIO::IO_OUT) );
+        REQUIRE( handler.canRead() == (mode == FastqIO::IO_IN) );
+        WHEN("close() is called") {
+            std::move(handler).close();
+            THEN("The handler is in a closed state") {
+                REQUIRE( !handler.isGood() );
+                REQUIRE(  handler.isBad() );
+                REQUIRE( !handler.canWrite() );
+                REQUIRE( !handler.canRead() );
+                REQUIRE( !handler.fromInjection() );
+            }
+        }
+    }
+}
+
+SCENARIO ("Compressed vs Uncompressed output","[FastqIO][Writing]") {
+    auto [ext,bCompressed] = GENERATE(table<std::string,bool>({
+                {".fq",false},{".fq.gz",true},{".gz.fq",false} } ) );
+    INFO("and Given: ext is " << ext);
+    GIVEN("An output handler") {
+        TempFile tf = constructTF(ext);
+        FastqIO out(tf.path().string(),FastqIO::IO_OUT);
+        REQUIRE( out.canWrite() );
+        WHEN("A template has been successfully written to the file") {
+            REQUIRE ( out.write(initFqt1fwd) );
+            std::move(out).close(); //Explicitly close the output handler prior to reading
+            std::ifstream in(tf.path().string());
+            THEN("The magic bytes for the output file are correct") {
+                REQUIRE( in.get() == (bCompressed ? 0x1F : '@') );
+                REQUIRE( in.get() == (bCompressed ? 0x8B : initFqt1fwd.name[0] ) );
             }
         }
     }
