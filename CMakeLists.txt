@@ -73,6 +73,26 @@ target_sources(CTPL
 )
 set_target_properties(CTPL PROPERTIES LINKER_LANGUAGE CXX)
 
+##SKETCHHASHFACTORY LIBRARY
+add_library(SketchHashFactory)
+target_sources(SketchHashFactory
+    PRIVATE
+        src/SketchHashFactory.cpp
+    PUBLIC
+        FILE_SET fastqIOHeaders
+        TYPE HEADERS
+        BASE_DIRS src
+        FILES
+            src/SketchHashFactory.h
+)
+target_link_libraries(SketchHashFactory
+    PRIVATE
+        CTPL
+        FastqIO
+        LocalSyncmerMap
+        Sketcher
+)
+
 
 ###PROJECT EXECTUTABLE
 add_executable(syncdedup)
@@ -84,10 +104,7 @@ target_sources(syncdedup
 #target_compile_features(syncdedup PRIVATE cxx_std_17)
 target_link_libraries(syncdedup
     PRIVATE
-        Sketcher
-        LocalSyncmerMap
-        FastqIO
-        CTPL
+        SketchHashFactory
 )
 
 ###TESTING EXECUTABLES
