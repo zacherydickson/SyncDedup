@@ -5,7 +5,7 @@
 ###  Requirements
 - Requires CMake 3.25+
 - Requires zlib 1.2.3+
-- Will fetch [zstr](https://github.com/mateidavid/zstrr)]
+- Will fetch [zstr](https://github.com/mateidavid/zstrr)
 
 ### Installation
 ```
