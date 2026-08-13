@@ -21,8 +21,14 @@ struct SketchPair {
     Sketch second;
 };
 
+//An interface defining the concept of a fastqsource
+//Any type implementing the concept will be able to act a functor which returns a FastqTemplate Object
+//get_size will return a true value if the fastq source has a defined type, and false otherwise
+//  if the source has s defined type the size argument will be set to that size,
+//  otherwise the value of size is undefined
 struct FastqTemplateSource {
     virtual FastqTemplate_t operator()() = 0;
+    virtual bool get_size(size_t & size) const = 0;
 };
 
 struct FastqIOAsSource : public FastqTemplateSource {
@@ -38,6 +44,7 @@ struct FastqIOAsSource : public FastqTemplateSource {
         }
         return fqt;
     }
+    bool get_size(size_t & size) const override { return false; }
     FastqIO in;
 };
 
