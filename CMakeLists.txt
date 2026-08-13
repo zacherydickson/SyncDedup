@@ -4,6 +4,7 @@ project(SyncDedup)
 enable_testing()
 option(BUILD_TESTING "Enable testing and build tests" OFF)
 
+###SKETCHER LIBRARY
 add_library(Sketcher)
 target_sources(Sketcher
     PRIVATE
@@ -17,6 +18,8 @@ target_sources(Sketcher
             src/Sketcher.h
 )
 
+
+###LOCALSYNCMERMAP LIBRARY
 add_library(LocalSyncmerMap)
 target_sources(LocalSyncmerMap
     PRIVATE
@@ -30,6 +33,7 @@ target_sources(LocalSyncmerMap
 )
 set_target_properties(LocalSyncmerMap PROPERTIES LINKER_LANGUAGE CXX)
 
+###ZLIB AND ZSTR LIBS
 find_package(ZLIB)
 include(FetchContent)
 FetchContent_Declare(ZStrGitRepo
@@ -38,6 +42,7 @@ FetchContent_Declare(ZStrGitRepo
 )
 FetchContent_MakeAvailable(ZStrGitRepo) # defines INTERFACE target 'zstr::zstr'
 
+###FASTQIO LIBRARY
 add_library(FastqIO)
 target_sources(FastqIO
     PRIVATE
@@ -55,7 +60,21 @@ target_link_libraries(FastqIO
         zstr::zstr
 )
 
+###CTPL LIBRARY
+add_library(CTPL)
+target_sources(CTPL
+    PUBLIC
+        FILE_SET ctplHeaders
+        TYPE HEADERS
+        BASE_DIRS CTPL
+        FILES
+            CTPL/ctpl.h
+            CTPL/ctpl_stl.h
+)
+set_target_properties(CTPL PROPERTIES LINKER_LANGUAGE CXX)
 
+
+###PROJECT EXECTUTABLE
 add_executable(syncdedup)
 target_sources(syncdedup
     PRIVATE
@@ -68,13 +87,16 @@ target_link_libraries(syncdedup
         Sketcher
         LocalSyncmerMap
         FastqIO
+        CTPL
 )
 
+###TESTING EXECUTABLES
 if(BUILD_TESTING)
     enable_testing()
     add_subdirectory(tests)
 endif()
 
+###INSTALL TARGETS
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set_property(CACHE CMAKE_INSTALL_PREFIX PROPERTY VALUE ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
