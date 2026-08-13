@@ -28,3 +28,6 @@ This is the core concept, however UMI's solve this problem completely. So it pro
 # Dev Notes
 
 Testing requires that Catch2 v3+ is installed and findable by CMake
+```
+cmake --workflow test
+```
