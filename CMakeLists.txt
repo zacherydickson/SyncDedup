@@ -120,5 +120,8 @@ endif()
 
 install(
     TARGETS syncdedup Sketcher
-    FILE_SET sketcherHeaders
+    FILE_SET
+        sketcherHeaders
+        fastqIOHeader
+        localSyncmerMapHeaders
 )
