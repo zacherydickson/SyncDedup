@@ -1,3 +1,6 @@
+#ifndef SKETCHER_HEADER_GAURD_
+#define SKETCHER_HEADER_GAURD_
+
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -69,3 +72,6 @@ private:
 
     Sketch generate_sketch_impl(const std::string & seq) const;
 };
+
+
+#endif //SKETCHER_HEADER_GAURD_
