@@ -72,24 +72,27 @@ class FastqIO {
         READ_RESULT next_template(FastqTemplate_t &);
         bool write(const FastqTemplate_t & fqtemplate);
 
-        bool isGood() { return !(flags_ & IO_BAD); } 
-        bool isBad() { return (flags_ & IO_BAD); } 
-        //Add Tests for isWriter and isReader
-        bool isWriter() { return (flags_ & IO_OUT); }
-        bool isReader() { return (flags_ & IO_IN); }
-        bool canWrite() { return (flags_ & (IO_OUT | IO_BAD)) == IO_OUT; }
-        bool canRead() { return (flags_ & (IO_IN | IO_BAD)) == IO_IN; }
-        bool fromInjection() { return flags_ & IO_INJECTED; }
-        bool isInterleaved() { return bInterleaved_; }
-        bool isPaired() { return bPaired_; }
+        bool isGood() const { return !(flags_ & IO_BAD); }
+        bool isBad() const { return (flags_ & IO_BAD); }
+        bool isWriter() const { return (flags_ & IO_OUT); }
+        bool isReader() const { return (flags_ & IO_IN); }
+        bool canWrite() const { return (flags_ & (IO_OUT | IO_BAD)) == IO_OUT; }
+        bool canRead() const { return (flags_ & (IO_IN | IO_BAD)) == IO_IN; }
+        bool fromInjection() const { return flags_ & IO_INJECTED; }
+        bool isInterleaved() const { return bInterleaved_; }
+        bool isPaired() const { return bPaired_; }
 
-        //TODO: Implement these, the former returns READ_PASS if it was able to read all requested
-        //templates, or the first error it encountered otherwise
-        //The others should be implemented to match the behaviour of tell[pg] and seek[pg] from [oi]stream
         READ_RESULT skip_templates(size_t n = 1);
         std::pair<size_t,size_t> tell() const;
-        void seek(size_t pos);
-        void seek(size_t off, std::ios_base::seekdir dir);
+        //TODO: Add tests
+        bool seek(std::pair<size_t,size_t> posPair);
+        //NOTE: Untested
+        bool seek(  std::pair<int,int> offPair,
+                    std::pair<  std::ios_base::seekdir,
+                            std::ios_base::seekdir> dirPair);
+        //Convenience versions of known single stream handlers
+        bool seek(size_t pos);
+        bool seek(int off, std::ios_base::seekdir dir);
 
         FastqStreamPair_t releaseStreams() &&;
         void close() &&;

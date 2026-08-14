@@ -335,3 +335,109 @@ void FastqIO::close() && {
     if(writer1_.pfile) { writer1_.pfile.reset(NULL); }
     if(writer2_.pfile) { writer2_.pfile.reset(NULL); }
 }
+
+//Read n templates from the stream but do not store or return them
+//Input - n the number of templates to skip
+//Output - READ_PASS if n templates were succesffuly skipped
+//         READ_FAIL if the handler could not read at the outset
+//         The first failure otherwise
+//Exceptions - logic error for call on writer
+FastqIO::READ_RESULT FastqIO::skip_templates(size_t n) {
+    if(! this->isReader() ){
+        throw std::logic_error("Attempt to call skip_templates on a non FastqIO input handler");
+    }
+    READ_RESULT res = this->canRead() ? READ_PASS : READ_FAIL;
+    FastqTemplate_t fqt;
+    size_t i = 0;
+    while(i++ < n && res == READ_PASS) {
+        res = this->next_template(fqt);
+    }
+    return res;
+}
+
+//Gives the position indicator for both associated streams
+//If a stream is in a fail state, or undefined a -1 (max uint64) is returned
+std::pair<size_t,size_t> FastqIO::tell() const {
+    std::pair<size_t,size_t> posPair = {-1ULL,-1ULL};
+    if( this->isBad() ) { return posPair; }
+    if( this->isReader() ) {
+        posPair.first = reader1_.pfile->tellg();
+        if(reader2_.pfile) {
+            posPair.second = reader2_.pfile->tellg();
+        }
+    } else if (this->isWriter()) {
+        posPair.first = writer1_.pfile->tellp();
+        if(writer2_.pfile) {
+            posPair.second = writer2_.pfile->tellp();
+        }
+    }
+    return posPair;
+}
+
+//Returns true after a succesful seek, false otherwise
+//seek g returns a stream reference so we can check for failure on the result
+bool FastqIO::seek(std::pair<size_t,size_t> posPair) {
+    if( this->isReader() ) {
+        if( reader1_.pfile->seekg(posPair.first).fail() ||
+            (   reader2_.pfile &&
+                reader2_.pfile->seekg(posPair.second).fail() ) )
+        {
+            flags_ &= IO_BAD;
+        }
+    } else if (this->isWriter()) {
+        if( writer1_.pfile->seekp(posPair.first).fail() ||
+            (   writer2_.pfile &&
+                writer2_.pfile->seekp(posPair.second).fail() ) )
+        {
+            flags_ &= IO_BAD;
+        }
+    }
+    return this->isGood();
+}
+
+
+//Returns true after a succesful seek, false otherwise
+//seek g returns a stream reference so we can check for failure on the result
+//For single stream handlers, the second value in the pair is ignored
+bool FastqIO::seek(std::pair<int,int> offPair,
+    std::pair<std::ios_base::seekdir,std::ios_base::seekdir> dirPair)
+{
+    if( this->isBad() ) { return false; }
+    if( this->isReader() ) {
+        //Set handler to bad if seeking in first stream fails,
+        // or the second handler is defined and its seek fails
+        if( reader1_.pfile->seekg(offPair.first,dirPair.first).fail() ||
+            (   reader2_.pfile &&
+                reader2_.pfile->seekg(offPair.second,dirPair.second).fail() ) )
+        {
+            flags_ &= IO_BAD;
+        }
+    } else if (this->isWriter()) {
+        if( writer1_.pfile->seekp(offPair.first,dirPair.first).fail() ||
+            (   writer2_.pfile &&
+                writer2_.pfile->seekp(offPair.second,dirPair.second).fail() ) )
+        {
+            flags_ &= IO_BAD;
+        }
+    }
+    return this->isGood();
+}
+
+//Convenience function for a known single stream handler
+//Exceptions - logic error for call on dual stream
+bool FastqIO::seek(size_t pos) {
+    if( bPaired_ && ! bInterleaved_ ){
+        throw std::logic_error("Attempt to use single stream seek for dual stream handler");
+    }
+    return this->seek({pos,-1ULL});
+}
+
+//Convenience function for a known single stream handler
+//Exceptions - logic error for call on dual stream
+bool FastqIO::seek(int off, std::ios_base::seekdir dir) {
+    if( bPaired_ && ! bInterleaved_ ){
+        throw std::logic_error("Attempt to use single stream seek for dual stream handler");
+    }
+    return this->seek({off,0},{dir,std::ios_base::beg});
+}
+
