@@ -8,8 +8,7 @@ option(BUILD_TESTING "Enable testing and build tests" OFF)
 add_library(Sketcher)
 target_sources(Sketcher
     PRIVATE
-        src/Sketcher.cpp 
-        
+        src/Sketcher.cpp
     PUBLIC
         FILE_SET sketcherHeaders
         TYPE HEADERS
@@ -84,6 +83,10 @@ target_sources(FastqTemplateSource
         BASE_DIRS src
         FILES
             src/FastqTemplateSource.h
+)
+target_link_libraries(FastqTemplateSource
+    PUBLIC
+        FastqIO
 )
 
 ##SKETCHHASHFACTORY LIBRARY
