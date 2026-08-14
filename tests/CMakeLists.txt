@@ -51,8 +51,22 @@ target_link_libraries(TestFastqIO
         Catch2Extensions
 )
 
+add_executable(TestFastqTemplateSource)
+target_sources(TestFastqTemplateSource
+    PRIVATE
+        testFastqTemplateSource.cpp
+)
+target_compile_features(TestFastqTemplateSource PRIVATE cxx_std_17)
+target_link_libraries(TestFastqTemplateSource
+    PRIVATE 
+        FastqTemplateSource
+        Catch2::Catch2WithMain
+        Catch2Extensions
+)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(TestSketcher)
 catch_discover_tests(TestLocalSyncmerMap)
 catch_discover_tests(TestFastqIO)
+catch_discover_tests(TestFastqTemplateSource)
