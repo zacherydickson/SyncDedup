@@ -382,14 +382,14 @@ bool FastqIO::seek(std::pair<size_t,size_t> posPair) {
             (   reader2_.pfile &&
                 reader2_.pfile->seekg(posPair.second).fail() ) )
         {
-            flags_ &= IO_BAD;
+            flags_ |= IO_BAD;
         }
     } else if (this->isWriter()) {
         if( writer1_.pfile->seekp(posPair.first).fail() ||
             (   writer2_.pfile &&
                 writer2_.pfile->seekp(posPair.second).fail() ) )
         {
-            flags_ &= IO_BAD;
+            flags_ |= IO_BAD;
         }
     }
     return this->isGood();
@@ -410,14 +410,14 @@ bool FastqIO::seek(std::pair<int,int> offPair,
             (   reader2_.pfile &&
                 reader2_.pfile->seekg(offPair.second,dirPair.second).fail() ) )
         {
-            flags_ &= IO_BAD;
+            flags_ |= IO_BAD;
         }
     } else if (this->isWriter()) {
         if( writer1_.pfile->seekp(offPair.first,dirPair.first).fail() ||
             (   writer2_.pfile &&
                 writer2_.pfile->seekp(offPair.second,dirPair.second).fail() ) )
         {
-            flags_ &= IO_BAD;
+            flags_ |= IO_BAD;
         }
     }
     return this->isGood();
