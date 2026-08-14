@@ -10,6 +10,7 @@ FastqIOAsFQTSource::FastqIOAsFQTSource(std::shared_ptr<FastqIO> handler)
 
 
 FastqIO::READ_RESULT FastqIOAsFQTSource::getTemplate(FastqTemplate_t & fqt) {
+    if(in->isBad()) { return FastqIO::READ_FAIL; } 
     FastqIO::READ_RESULT res = in->next_template(fqt);
     if(res != FastqIO::READ_PASS && res != FastqIO::READ_EOF ) {
         throw std::invalid_argument("Malformed fastq entry");
@@ -54,8 +55,7 @@ bool VectorAsFQTSource::operator()(FastqTemplate_t & fqt) {
 std::vector<FastqTemplate_t> VectorAsFQTSource::get_block(size_t max_n){
     std::vector<FastqTemplate_t> res;
     res.reserve(max_n);
-    size_t i = 0;
-    while(i < max_n && pos < vec->size()){
+    while(res.size() < max_n && pos < vec->size()){
         res.push_back(vec->at(pos++));
     }
     return res;
