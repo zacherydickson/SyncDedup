@@ -73,6 +73,19 @@ target_sources(CTPL
 )
 set_target_properties(CTPL PROPERTIES LINKER_LANGUAGE CXX)
 
+###FASTQTEMPLATESOURCE LIBRARY
+add_library(FastqTemplateSource)
+target_sources(FastqTemplateSource
+    PRIVATE
+        src/FastqTemplateSource.cpp
+    PUBLIC
+        FILE_SET fqtsrcHeaders
+        TYPE HEADERS
+        BASE_DIRS src
+        FILES
+            src/FastqTemplateSource.h
+)
+
 ##SKETCHHASHFACTORY LIBRARY
 add_library(SketchHashFactory)
 target_sources(SketchHashFactory
@@ -91,6 +104,8 @@ target_link_libraries(SketchHashFactory
         FastqIO
         LocalSyncmerMap
         Sketcher
+    PRIVATE
+        FastqTemplateSource
 )
 
 
