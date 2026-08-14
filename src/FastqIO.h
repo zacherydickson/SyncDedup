@@ -84,7 +84,7 @@ class FastqIO {
 
         READ_RESULT skip_templates(size_t n = 1);
         std::pair<size_t,size_t> tell() const;
-        //TODO: Add tests
+        //NOTE: behaviour for use on writers is untested
         bool seek(std::pair<size_t,size_t> posPair);
         //NOTE: Untested
         bool seek(  std::pair<int,int> offPair,
