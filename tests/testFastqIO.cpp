@@ -60,6 +60,7 @@ std::unique_ptr<std::iostream > constructSS(
 endloop:
     if(!postappend){
         ss_ptr->seekg(0);
+        ss_ptr->seekp(0);
     }
     return ss_ptr;
 }
@@ -115,6 +116,8 @@ SCENARIO ("Object Construction from Injection", "[FastqIO][Construction]") {
         FastqIO handler(constructSS(),mode,bInterleaved);
         REQUIRE( handler.isGood() );
         REQUIRE( !handler.isBad() );
+        REQUIRE( handler.isWriter() == (mode == FastqIO::IO_OUT) );
+        REQUIRE( handler.isReader() == (mode == FastqIO::IO_IN) );
         REQUIRE( handler.canWrite() == (mode == FastqIO::IO_OUT) );
         REQUIRE( handler.canRead() == (mode == FastqIO::IO_IN) );
         REQUIRE( handler.fromInjection() );
@@ -126,6 +129,8 @@ SCENARIO ("Object Construction from Injection", "[FastqIO][Construction]") {
         THEN("The state is correct"){
             REQUIRE( handler.isGood() );
             REQUIRE( !handler.isBad() );
+            REQUIRE( handler.isWriter() == (mode == FastqIO::IO_OUT) );
+            REQUIRE( handler.isReader() == (mode == FastqIO::IO_IN) );
             REQUIRE( handler.canWrite() == (mode == FastqIO::IO_OUT) );
             REQUIRE( handler.canRead() == (mode == FastqIO::IO_IN) );
             REQUIRE( handler.fromInjection() );
@@ -176,6 +181,8 @@ SCENARIO("Handler Construction with valid files", "[FastqIO][Construction]" ) {
             AND_THEN("The Handler is in the correct state") {
                 REQUIRE( handler_ptr->isGood() );
                 REQUIRE( !handler_ptr->isBad() );
+                REQUIRE( handler_ptr->isWriter() == (mode == FastqIO::IO_OUT) );
+                REQUIRE( handler_ptr->isReader() == (mode == FastqIO::IO_IN) );
                 REQUIRE( handler_ptr->canWrite() == (mode == FastqIO::IO_OUT) );
                 REQUIRE( handler_ptr->canRead() == (mode == FastqIO::IO_IN) );
                 REQUIRE( !handler_ptr->fromInjection() );
@@ -195,6 +202,8 @@ SCENARIO("Handler Construction with valid files", "[FastqIO][Construction]" ) {
             AND_THEN("The Handler is in the correct state") {
                 REQUIRE( handler_ptr->isGood() );
                 REQUIRE( !handler_ptr->isBad() );
+                REQUIRE( handler_ptr->isWriter() == (mode == FastqIO::IO_OUT) );
+                REQUIRE( handler_ptr->isReader() == (mode == FastqIO::IO_IN) );
                 REQUIRE( handler_ptr->canWrite() == (mode == FastqIO::IO_OUT) );
                 REQUIRE( handler_ptr->canRead() == (mode == FastqIO::IO_IN) );
                 REQUIRE( !handler_ptr->fromInjection() );
@@ -604,3 +613,272 @@ SCENARIO ("Compressed vs Uncompressed output","[FastqIO][Writing]") {
         }
     }
 }
+
+SCENARIO ("Skipping templates", "[FastqIO][Reading]" ) {
+    GIVEN("A valid output handler") {
+        FastqIO out(constructSS(),FastqIO::IO_OUT);
+        REQUIRE ( out.canWrite() );
+        THEN("Attempting to skip templates throws std::logic_error"){
+            REQUIRE_THROWS_AS( out.skip_templates(1) , std::logic_error );
+        }
+    }
+    GIVEN("A valid input handler with four templates") {
+        std::vector<FastqTemplate_t> input = {initFqt1fwd,initFqt1rev,initFqt2fwd,initFqt2rev};
+        auto nSkip = GENERATE(0, 1, 2, 3);
+        INFO("and Given: nSkip is" << nSkip);
+        FastqIO in(constructSS(input), FastqIO::IO_IN);
+        REQUIRE ( in.canRead() );
+        WHEN("skip_templates is succesfully called") {
+            FastqIO::READ_RESULT res;
+            REQUIRE_NOTHROW( res = in.skip_templates(nSkip) );
+            THEN("The result is a pass") {
+                REQUIRE( res == FastqIO::READ_PASS );
+                AND_WHEN("The next template is successfully read") {
+                    FastqTemplate_t fqt;
+                    res = in.next_template(fqt);
+                    REQUIRE (res == FastqIO::READ_PASS );
+                    THEN("The template matches the correct template") {
+                        REQUIRE( fqt == input[nSkip] );
+                    }
+                }
+            }
+        }
+    }
+    GIVEN("A valid input handler with no templates") {
+        FastqIO in(constructSS(), FastqIO::IO_IN);
+        REQUIRE ( in.canRead() );
+        WHEN("skip_templates is called") {
+            FastqIO::READ_RESULT res = in.skip_templates(1);
+            THEN("The result is eof"){
+                REQUIRE( res == FastqIO::READ_EOF );
+            }
+        }
+    }
+    GIVEN("A valid input handler with mismatched qual and seq lengths"){
+        FastqIO in(constructSS({initFqtBadLenpair}), FastqIO::IO_IN);
+        REQUIRE ( in.canRead() );
+        WHEN("skip_templates is called") {
+            FastqIO::READ_RESULT res = in.skip_templates(1);
+            THEN("The result is Seq len mismatch"){
+                REQUIRE( res == FastqIO::READ_SEQ_QUAL_LEN );
+            }
+        }
+    }
+    GIVEN("A valid paired handler with mismatched read names"){
+        FastqIO in(constructSS({initFqt1fwd,initFqt2rev}), FastqIO::IO_IN, true);
+        REQUIRE ( in.canRead() );
+        WHEN("skip_templates is called") {
+            FastqIO::READ_RESULT res = in.skip_templates(1);
+            THEN("The result is Pair mismatch"){
+                REQUIRE( res == FastqIO::READ_MISPAIRED );
+            }
+        }
+    }
+    auto expectedFailure = GENERATE(FastqIO::READ_MISSING_LEADER1,
+                                        FastqIO::READ_MISSING_LEADER2,
+                                        FastqIO::READ_EOF );
+    std::string failureStr;
+    switch(expectedFailure) {
+        case FastqIO::READ_MISSING_LEADER1:
+            failureStr = "MISSING '@'"; break;
+        case FastqIO::READ_MISSING_LEADER2:
+            failureStr = "MISSING '+'"; break;
+        case FastqIO::READ_EOF:
+            failureStr = "End of File"; break;
+        default:
+            failureStr = "No Error"; break;
+    }
+    INFO("Given: Expected failure is " << failureStr);
+    GIVEN("An unpaired stream with partial input") {
+        FastqIO in( constructSS({initFqt1fwd},false,expectedFailure),
+                    FastqIO::IO_IN);
+        REQUIRE ( in.canRead() );
+        WHEN("skip_templates is called") {
+            FastqIO::READ_RESULT res = in.skip_templates(1);
+            THEN("The result is the expected failure"){
+                REQUIRE( res == expectedFailure );
+            }
+        }
+    }
+}
+
+SCENARIO("Telling handler positions","[FastqIO][Telling]") {
+    auto mode = GENERATE(FastqIO::IO_IN, FastqIO::IO_OUT);
+    INFO("and Given: mode is " << ( (mode == FastqIO::IO_IN) ? "IO_IN" : "IO_OUT"));
+    auto postappend = GENERATE(true, false);
+    INFO("and Given: postappend is " << postappend);
+    GIVEN("A handler in a bad state") {
+        FastqIO handler(constructSS(),mode);
+        FastqIO(std::move(handler));
+        REQUIRE( handler.isBad() );
+        WHEN("tell() is called") {
+            auto posPair = handler.tell();
+            THEN("both positions are -1") {
+                REQUIRE( posPair.first == -1ULL);
+                REQUIRE( posPair.second == -1ULL);
+            }
+        }
+    }
+    GIVEN("A valid single stream handler with a non-empty stream") {
+        bool bInterleaved = GENERATE(true, false);
+        INFO("And Given: bInterleaved is " << bInterleaved);
+        auto ss_ptr = constructSS({initFqt1pair},postappend);
+        size_t pos = (mode == FastqIO::IO_IN) ? ss_ptr->tellg() : ss_ptr->tellp(); 
+        FastqIO handler(std::move(ss_ptr),mode,bInterleaved);
+        REQUIRE( handler.canWrite() == (mode == FastqIO::IO_OUT) );
+        REQUIRE( handler.canRead() == (mode == FastqIO::IO_IN) );
+        WHEN("tell() is called") {
+            auto posPair = handler.tell();
+            THEN("The first position is correct and the second is -1") {
+                REQUIRE( posPair.first == pos);
+                REQUIRE( posPair.second == -1ULL);
+            }
+        }
+    }
+    GIVEN("A two stream handler") {
+        auto ss1_ptr = constructSS({initFqt1fwd},postappend);
+        auto ss2_ptr = constructSS({initFqt1rev},postappend);
+        size_t pos1 = (mode == FastqIO::IO_IN) ? ss1_ptr->tellg() : ss1_ptr->tellp(); 
+        size_t pos2 = (mode == FastqIO::IO_IN) ? ss2_ptr->tellg() : ss2_ptr->tellp(); 
+        FastqIO handler(std::move(ss1_ptr),std::move(ss2_ptr),mode);
+        REQUIRE( handler.canWrite() == (mode == FastqIO::IO_OUT) );
+        REQUIRE( handler.canRead() == (mode == FastqIO::IO_IN) );
+        WHEN("tell() is called") {
+            auto posPair = handler.tell();
+            THEN("Both positions are correct") {
+                REQUIRE( posPair.first == pos1);
+                REQUIRE( posPair.second == pos2);
+            }
+        }
+    }
+}
+
+SCENARIO("Seeking to a valid position changes the results of tell","[FastqIO][Seeking][Telling]") {
+    size_t seekPos = constructSS({initFqt1fwd},true)->tellp() / 2;
+    if(!seekPos){ seekPos = 1; }
+    INFO("and Given: seekPos is " << seekPos);
+    auto [nStream, bInterleaved] = GENERATE(table<int,bool>({
+                {1,false}, {1,true}, {2,false} } ));
+    INFO("and Given: mode (nStream,bInterleaved) is (" << nStream << ", " << bInterleaved << ")" );
+    auto mode = GENERATE(FastqIO::IO_IN, FastqIO::IO_OUT);
+    INFO("and Given: mode is " << ( (mode == FastqIO::IO_IN) ? "IO_IN" : "IO_OUT"));
+    GIVEN("A valid handler with at least a complete read in the stream(s)") {
+        std::unique_ptr<FastqIO> handler_ptr ( (nStream == 1) ?
+           new FastqIO(constructSS({initFqt1pair}),mode,bInterleaved) :
+           new FastqIO(constructSS({initFqt1fwd}),constructSS({initFqt1rev}),mode) );
+        REQUIRE( handler_ptr->canWrite() == (mode == FastqIO::IO_OUT) );
+        REQUIRE( handler_ptr->canRead() == (mode == FastqIO::IO_IN) );
+        auto posPair = handler_ptr->tell();
+        REQUIRE ( posPair.first != -1ULL );
+        REQUIRE ( (posPair.second == -1ULL) == (nStream == 1) );
+        WHEN("seek() is successfully called into a position inside the read") {
+            REQUIRE ( handler_ptr->seek({seekPos,seekPos}) );
+            auto posPairAfter = handler_ptr->tell();
+            THEN("The stream positions change") {
+                REQUIRE ( posPair.first != posPairAfter.first );
+                if(nStream == 2) {
+                    REQUIRE ( posPair.second != posPairAfter.second );
+                }
+            }
+        }
+    }
+}
+
+SCENARIO("Seeking beyond the end of an input handler","[FastqIO][Seeking]") {
+    size_t seekPos = 1ULL + constructSS({initFqt1pair},true)->tellp();
+    INFO("and Given: seekPos is " << seekPos);
+    auto [nStream, bInterleaved] = GENERATE(table<int,bool>({
+                {1,false}, {1,true}, {2,false} } ));
+    INFO("and Given: format (nStream,bInterleaved) is (" << nStream << ", " << bInterleaved << ")" );
+    GIVEN("A valid input handler with at least one complete segment") {
+        std::unique_ptr<FastqIO> in_ptr ( (nStream == 1) ?
+           new FastqIO(constructSS({initFqt1pair}),FastqIO::IO_IN,bInterleaved) :
+           new FastqIO(constructSS({initFqt1fwd}),constructSS({initFqt1rev}),FastqIO::IO_IN) );
+        REQUIRE( in_ptr->canRead() );
+            INFO("isReaderPRe is" << in_ptr->isReader() );
+        WHEN("seek() is called beyond the stream's end"){
+            bool res = in_ptr->seek({seekPos,seekPos});
+            INFO("isReader is" << in_ptr->isReader() );
+            if( !res) {
+                THEN("Failure buts the reader in a bad state") {
+                    REQUIRE ( in_ptr->isBad() );
+                }
+            } else {
+                THEN("Attempts to read fail") {
+                    FastqTemplate_t fqt;
+                    REQUIRE( in_ptr->next_template(fqt) != FastqIO::READ_PASS );
+                    REQUIRE( in_ptr->isBad() );
+                }
+            }
+        }
+    }
+}
+
+SCENARIO("Seeking on input Handlers","[FastqIO][Seeking]") {
+    GIVEN("A single streamed input with two paired templates") {
+        size_t endOfPair1 = constructSS({initFqt1pair},true)->tellp();
+        INFO("and Given: eop is " << endOfPair1 );
+        bool bInterleaved = GENERATE(true, false);
+        const FastqTemplate_t & targetFqt = (bInterleaved) ? initFqt2pair : initFqt2fwd;
+        INFO("and Given: bInterleaved is " << bInterleaved);
+        FastqIO in(constructSS({initFqt1pair,initFqt2pair}),FastqIO::IO_IN,
+                bInterleaved);
+        REQUIRE( in.canRead() );
+        bool bConvenience = GENERATE(true, false);
+        INFO("and Given: bConvenience is " << bConvenience);
+        WHEN("seek() is called to the end of the first pair") {
+            bool res = bConvenience ?   in.seek(endOfPair1) :
+                                        in.seek({endOfPair1,-1});
+            THEN("The seek is successful") {
+                REQUIRE ( res );
+                REQUIRE ( in.canRead() );
+                AND_WHEN("A template is successfully read") {
+                    FastqTemplate_t fqt;
+                    REQUIRE( in.next_template(fqt) == FastqIO::READ_PASS );
+                    INFO("the read is " << fqt.to_string() << "\n");
+                    THEN ( "The read is correct" ) {
+                        REQUIRE ( fqt == targetFqt );
+                    }
+                }
+            }
+        }
+    }
+    GIVEN("A dual streamed input with two paired templates") {
+        size_t endOfFwd2 = constructSS({initFqt2fwd},true)->tellp();
+        size_t endOfRev2 = constructSS({initFqt2rev},true)->tellp();
+        FastqIO in( constructSS({initFqt2fwd,initFqt1fwd}),
+                    constructSS({initFqt2rev,initFqt1rev}),FastqIO::IO_IN );
+        REQUIRE( in.canRead() );
+        THEN("Convenience seek methods throw") {
+            REQUIRE_THROWS_AS( in.seek(0) , std::logic_error );
+        }
+        WHEN("seek() is called in a proper paired manner") {
+            bool res = in.seek({endOfFwd2,endOfRev2});
+            THEN("The seek is successful") {
+                REQUIRE ( res );
+                REQUIRE ( in.canRead() );
+                AND_WHEN ("A template is successfully read") {
+                    FastqTemplate_t fqt;
+                    REQUIRE( in.next_template(fqt) == FastqIO::READ_PASS );
+                    INFO("the read is " << fqt.to_string() << "\n");
+                    THEN("The template matches the second template") {
+                        REQUIRE ( fqt == initFqt1pair );
+                    }
+                }
+            }
+        }
+        WHEN("seek() is successfully called to mismatched read positions") {
+            REQUIRE ( in.seek({endOfFwd2,0}) );
+            REQUIRE ( in.canRead() );
+            AND_WHEN("An attempt to read is made") {
+                FastqTemplate_t fqt;
+                FastqIO::READ_RESULT res = in.next_template(fqt);
+                THEN("The attempt fails with mismatched pair") {
+                    REQUIRE ( res != FastqIO::READ_PASS );
+                    REQUIRE ( res == FastqIO::READ_MISPAIRED );
+                }
+            }
+        }
+    }
+}
+
