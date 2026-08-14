@@ -51,6 +51,10 @@ TEST_CASE( "Sketch object construction", "[Sketch]" ) {
         REQUIRE_NOTHROW( Sketcher(15,5,2.5,4,
                     Sketcher::BindLexicographicCoder(Sketcher::DNA_Alphabet)) );
     }
+    SECTION ("Copy Construction") {
+       Sketcher orig(15,5,1.0); 
+       REQUIRE_NOTHROW( Sketcher(orig) );
+    }
     SECTION ( "Alphabet Shortcut Constructor" ) {
         REQUIRE_NOTHROW( Sketcher(15,5,2.5,Sketcher::DNA_Alphabet) );
     }
