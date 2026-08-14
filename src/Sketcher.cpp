@@ -35,6 +35,12 @@ Sketcher::Sketcher( size_t k, size_t s, double d,
     }
 }
 
+Sketcher::Sketcher ( const Sketcher & other )
+    :   k_(other.k_), s_(other.s_), w_(other.w_), c_(other.c_),
+        alphabet_size_(other.alphabet_size_), hasher_(other.hasher_)
+{
+}
+
 //Returns the first position in the sequence which is still in the vector
 //Assuming the vector has been filled continuously
 size_t Sketcher::fill_shashVec(   const std::string & seq, size_t start,
@@ -54,6 +60,7 @@ size_t Sketcher::fill_shashVec(   const std::string & seq, size_t start,
 //  the sequence paired with the positions in the sequence at which those syncmers occur
 //  The sketch will be empty if the input is smaller than the value of k_
 //  The sketch may be empty if the numer of kmers in the input is smaller than k - s
+//Based on Closed Downsampled Syncmer definitions by Robert Edgar (10.7717/peerj.10805)
 //Input - a string representing a sequence for which to generate a sketch
 //Output - a vector of sketch elements
 Sketch Sketcher::generate_sketch_impl(const std::string & seq) const {
@@ -107,6 +114,12 @@ Sketch Sketcher::generate_sketch_impl(const std::string & seq) const {
         }
     }
     return sketch;
+}
+
+//distribution is non-trivial without downsampling
+double Sketcher::ExpectedSyncmerOverlap() const {
+    throw std::logic_error("Not implemented");
+    return 0.0;
 }
 
 //Fowler -Noll-Vo hash function
