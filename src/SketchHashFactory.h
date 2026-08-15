@@ -20,8 +20,8 @@ struct HashedFastqSet {
 struct SketchPair {
     Sketch first;
     Sketch second;
+    double meanQuality;
 };
-
 
 class SketchHashFactory {
     public:
@@ -29,12 +29,7 @@ class SketchHashFactory {
     SketchHashFactory(  Sketcher && sketcher,size_t nProcThread = 1,
                         int phredOffset = 33);
     
-    HashedFastqSet BuildHashedFastqSet(FastqIO & in);
-    //TODO: Switch implementation over to generic fqtSources with a HashedFastqSet reference
-    //  This lets one expand an existing hash from multiple sources
-    //  Ultimately this allows Reading part of a temporary stream and starting the hash,
-    //  and then finishing with the rest of the stream
-    void BuildHashedFastqSet(FastqTemplateSource & src, HashedFastqSet &);
+    size_t FillHashedFastqSet(FastqTemplateSource & src, HashedFastqSet & hfqSet);
     protected:
     //Members
     Sketcher sketcher_;
@@ -42,10 +37,14 @@ class SketchHashFactory {
     const int phredOffset_;
 
     //Methods
-    HashedFastqSet NoWorkerBuild(FastqIO & in);
-    HashedFastqSet ParallelBuild(FastqIO & in);
-    SketchPair GeneratePairedSketch(const FastqTemplate_t & fqt);
-    double CalculateMeanQuality(const FastqTemplate_t & fqt);
+    size_t NoWorkerFill(FastqTemplateSource & src, HashedFastqSet &);
+    size_t ParallelFill(FastqTemplateSource & src, HashedFastqSet &);
+    std::vector<std::future<std::vector<SketchPair>>> BatchLaunchSketching(
+            FastqTemplateSource & src,size_t batchSize, HashedFastqSet & hfqSet);
+    SketchPair GeneratePairedSketch(const FastqTemplate_t & fqt) const ;
+    double CalculateMeanQuality(const FastqTemplate_t & fqt) const ;
+    void InsertFqt( size_t idx, const SketchPair& sp, const FastqTemplate_t & fqt,
+                    HashedFastqSet & hfqSet);
 };
 
 #endif // SKETCH_HASH_FACTORY_HEADER_GAURD_
