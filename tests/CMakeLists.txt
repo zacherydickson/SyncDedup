@@ -64,9 +64,23 @@ target_link_libraries(TestFastqTemplateSource
         Catch2Extensions
 )
 
+add_executable(TestSketchHashFactory)
+target_sources(TestSketchHashFactory
+    PRIVATE
+        testSketchHashFactory.cpp
+)
+target_compile_features(TestSketchHashFactory PRIVATE cxx_std_17)
+target_link_libraries(TestSketchHashFactory
+    PRIVATE 
+        SketchHashFactory 
+        Catch2::Catch2WithMain
+        Catch2Extensions
+)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(TestSketcher)
 catch_discover_tests(TestLocalSyncmerMap)
 catch_discover_tests(TestFastqIO)
 catch_discover_tests(TestFastqTemplateSource)
+catch_discover_tests(TestSketchHashFactory)

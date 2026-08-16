@@ -27,13 +27,15 @@ class SketchHashFactory {
     public:
     SketchHashFactory() = delete;
     SketchHashFactory(  Sketcher && sketcher,size_t nProcThread = 1,
-                        int phredOffset = 33);
+                        int phredOffset = SketchHashFactory::DefaultPhredOffset);
     
     size_t FillHashedFastqSet(FastqTemplateSource & src, HashedFastqSet & hfqSet);
     SketchPair GeneratePairedSketch(const FastqTemplate_t & fqt) const ;
     double CalculateMeanQuality(const FastqTemplate_t & fqt) const ;
     void InsertFqt( size_t idx, const SketchPair& sp, const FastqTemplate_t & fqt,
                     HashedFastqSet & hfqSet);
+
+    static const int DefaultPhredOffset = 33;
     protected:
     //Members
     Sketcher sketcher_;
