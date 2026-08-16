@@ -30,6 +30,10 @@ class SketchHashFactory {
                         int phredOffset = 33);
     
     size_t FillHashedFastqSet(FastqTemplateSource & src, HashedFastqSet & hfqSet);
+    SketchPair GeneratePairedSketch(const FastqTemplate_t & fqt) const ;
+    double CalculateMeanQuality(const FastqTemplate_t & fqt) const ;
+    void InsertFqt( size_t idx, const SketchPair& sp, const FastqTemplate_t & fqt,
+                    HashedFastqSet & hfqSet);
     protected:
     //Members
     Sketcher sketcher_;
@@ -41,10 +45,6 @@ class SketchHashFactory {
     size_t ParallelFill(FastqTemplateSource & src, HashedFastqSet &);
     std::vector<std::future<std::vector<SketchPair>>> BatchLaunchSketching(
             FastqTemplateSource & src,size_t batchSize, HashedFastqSet & hfqSet);
-    SketchPair GeneratePairedSketch(const FastqTemplate_t & fqt) const ;
-    double CalculateMeanQuality(const FastqTemplate_t & fqt) const ;
-    void InsertFqt( size_t idx, const SketchPair& sp, const FastqTemplate_t & fqt,
-                    HashedFastqSet & hfqSet);
 };
 
 #endif // SKETCH_HASH_FACTORY_HEADER_GAURD_
