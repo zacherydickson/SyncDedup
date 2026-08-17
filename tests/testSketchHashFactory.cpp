@@ -73,7 +73,7 @@ TEST_CASE("Mean Quality is correctly calculated","[SketchHashFactory]") {
     int nThread = 1;
     SketchHashFactory shFactory(
             Sketcher(13,5,1), nThread,
-            SketchHashFactory::DefaultPhredOffset + phredOffsetOffset);
+            SketchHashFactory::DefaultPhredOffset - phredOffsetOffset);
     struct testData {
         FastqTemplate_t fqt;
         double expqual;
@@ -86,6 +86,7 @@ TEST_CASE("Mean Quality is correctly calculated","[SketchHashFactory]") {
         { initFqt2rev, initMeanQual2rev   + phredOffsetOffset  },
         { initFqt2pair, initMeanQual2pair + phredOffsetOffset  } };
     for( const testData & td : fqtVec) {
+        INFO("and Given: testCase is " << td.fqt.name << " with " << (td.fqt.segVec.size()) << " segments");
         REQUIRE_THAT(   shFactory.CalculateMeanQuality(td.fqt),
                         Catch::Matchers::WithinAbs(td.expqual,0.001)
                      );
