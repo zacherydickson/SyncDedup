@@ -111,6 +111,22 @@ target_link_libraries(SketchHashFactory
         FastqTemplateSource
 )
 
+###DUPLICATEFILTER LIBRARY
+add_library(DuplicateFilter)
+target_sources(DuplicateFilter
+    PRIVATE
+        src/DuplicateFilter.cpp
+    PUBLIC
+    FILE_SET duplicateFilterHeaders
+        TYPE HEADERS
+        BASE_DIRS src
+        FILES
+            src/DuplicateFilter.h
+)
+target_link_libraries(DuplicateFilter
+    PRIVATE
+        SketchHashFactory
+)
 
 ###PROJECT EXECTUTABLE
 add_executable(syncdedup)
