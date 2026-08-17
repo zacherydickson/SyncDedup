@@ -33,20 +33,26 @@ double initMeanQual2pair =  (   initMeanQual2fwd *
 
 
 TEST_CASE("Mean Quality is correctly calculated","[SketchHashFactory]") {
-    SketchHashFactory shFactory(Sketcher(13,5,1));
+    auto phredOffsetOffset = GENERATE(0, 1, 5, -5);
+    INFO("and Given: phred offset from default is " << phredOffsetOffset);
+    int nThread = 1;
+    SketchHashFactory shFactory(
+            Sketcher(13,5,1), nThread,
+            SketchHashFactory::DefaultPhredOffset + phredOffsetOffset);
     struct testData {
         FastqTemplate_t fqt;
-        double qual;
+        double expqual;
     };
-    std::vector <testData> fqtVec = {   { initFqt1fwd, initMeanQual1fwd },
-                                        { initFqt1rev, initMeanQual1rev },
-                                        { initFqt1pair, initMeanQual1pair },
-                                        { initFqt2fwd, initMeanQual2fwd },
-                                        { initFqt2rev, initMeanQual2rev },
-                                        { initFqt2pair, initMeanQual2pair } };
+    std::vector <testData> fqtVec = {
+        { initFqt1fwd, initMeanQual1fwd   + phredOffsetOffset  },
+        { initFqt1rev, initMeanQual1rev   + phredOffsetOffset  },
+        { initFqt1pair, initMeanQual1pair + phredOffsetOffset  },
+        { initFqt2fwd, initMeanQual2fwd   + phredOffsetOffset  },
+        { initFqt2rev, initMeanQual2rev   + phredOffsetOffset  },
+        { initFqt2pair, initMeanQual2pair + phredOffsetOffset  } };
     for( const testData & td : fqtVec) {
         REQUIRE_THAT(   shFactory.CalculateMeanQuality(td.fqt),
-                        Catch::Matchers::WithinAbs(td.qual,0.001)
+                        Catch::Matchers::WithinAbs(td.expqual,0.001)
                      );
     }
 }
