@@ -121,14 +121,14 @@ SCENARIO("Fqt's are properly inserted into the HashedFastqSet ","[HashedFastqSet
     SketchHashFactory shFactory(Sketcher(7,5,1));
     GIVEN("A fully sketched fastqTemplate and an hfqSet") {
         HashedFastqSet hfqSet;
-        size_t startingNTemplate = hfqSet.templateVec.size();
+        size_t startingNTemplate = hfqSet.templates.size();
         size_t startingNHit = hfqSet.sketchMap.hits();
         size_t fqtIdx = 0;
         size_t nTemplateIncrease = (bPreInsert) ? 0 : 1;
         if(bPreInsert) {
-            fqtIdx = hfqSet.templateVec.size();
-            hfqSet.templateVec.emplace_back(input);
-            startingNTemplate = hfqSet.templateVec.size();
+            fqtIdx = hfqSet.templates.size();
+            hfqSet.templates.emplace_back(input);
+            startingNTemplate = hfqSet.templates.size();
             REQUIRE ( startingNHit == hfqSet.sketchMap.hits() );
         }
         SketchPair sp = shFactory.GeneratePairedSketch(input);
@@ -141,14 +141,14 @@ SCENARIO("Fqt's are properly inserted into the HashedFastqSet ","[HashedFastqSet
                 hfqSet.insert(sp,input);
             }
             THEN("The meanQuality for the template is correct") {
-                REQUIRE ( hfqSet.templateVec[fqtIdx].meanQual == sp.meanQuality );
+                REQUIRE ( hfqSet.templates[fqtIdx].meanQual == sp.meanQuality );
             }
             THEN("The number of stored templates and hits increases correctly") {
-                REQUIRE( hfqSet.templateVec.size() == startingNTemplate + nTemplateIncrease );
+                REQUIRE( hfqSet.templates.size() == startingNTemplate + nTemplateIncrease );
                 REQUIRE( hfqSet.sketchMap.hits() == startingNHit + nHit );
             }
             THEN("The stored templates are correct") {
-                REQUIRE ( hfqSet.templateVec.front() == input );
+                REQUIRE ( hfqSet.templates.front() == input );
             }
             THEN("The input sketch elements can be found") {
                 for(const SketchElement & elem : sp.first) {
