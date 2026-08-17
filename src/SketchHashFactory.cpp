@@ -6,19 +6,19 @@
 
 void HashedFastqSet::insert(const SketchPair & sp, const FastqTemplate_t & fqt)
 {
-    size_t idx = templateVec.size();
-    templateVec.emplace_back(fqt);
+    size_t idx = templates.size();
+    templates.emplace_back(fqt);
     this->add_sketch(idx,sp);
 }
 
 void HashedFastqSet::add_sketch(size_t idx, const SketchPair & sp)
 {
 #ifndef NDEBUG
-    if(idx >= templateVec.size()){
+    if(idx >= templates.size()){
         throw std::logic_error("Attempt to add a sketch for a template that has not been added");
     }
 #endif
-    templateVec[idx].meanQual = sp.meanQuality;
+    templates[idx].meanQual = sp.meanQuality;
     sketchMap.insert(2*idx+0,sp.first);
     sketchMap.insert(2*idx+1,sp.second);
 }
@@ -42,19 +42,19 @@ std::vector<std::future<std::vector<SketchPair>>>
     std::vector<FastqTemplate_t> fqtVec;
     bool bContinue = true;
     while(bContinue) {
-        size_t batchStart = hfqSet.templateVec.size();
+        size_t batchStart = hfqSet.templates.size();
         size_t batchEnd = batchStart;
         if(batchSize > 1){ //For Actual batches
             std::vector<FastqTemplate_t> batch;
             batch = src.get_block(batchSize);
             for(auto & fqt : batch){
-                hfqSet.templateVec.emplace_back(fqt);
+                hfqSet.templates.emplace_back(fqt);
             }
             batchEnd += batch.size();
         } else { //For singlet batches, can use the functor - lower overhead
             FastqTemplate_t fqt;
             if( src(fqt) ) {
-                hfqSet.templateVec.emplace_back(fqt);
+                hfqSet.templates.emplace_back(fqt);
                 batchEnd++;
             }
         }
@@ -63,7 +63,7 @@ std::vector<std::future<std::vector<SketchPair>>>
                         [&hfqSet,batchStart,batchEnd,this](int id) {
                             std::vector<SketchPair> spVec;
                             for(size_t i = batchStart; i < batchEnd; i++) {
-                                FastqTemplate_t & fqt = hfqSet.templateVec[i];
+                                FastqTemplate_t & fqt = hfqSet.templates[i];
                                 spVec.push_back( this->GeneratePairedSketch(fqt));
                             }
                             return spVec;
@@ -149,7 +149,7 @@ size_t SketchHashFactory::ParallelFill( FastqTemplateSource & src,
 
 
     //Store where the end of the hfqSet template vec ended
-    size_t fqtIdx = hfqSet.templateVec.size();
+    size_t fqtIdx = hfqSet.templates.size();
 
     std::vector<std::future<std::vector<SketchPair>>> sketchFutureVec =
         this->BatchLaunchSketching(src,batchSize,hfqSet);

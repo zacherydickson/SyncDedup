@@ -23,7 +23,7 @@ struct SketchPair {
 
 struct HashedFastqSet {
     LocalSyncmerMap sketchMap;
-    std::deque<ExtendedFastqTemplate_t> templateVec;
+    std::deque<ExtendedFastqTemplate_t> templates;
     void insert(const SketchPair& sp, const FastqTemplate_t & fqt);
     void add_sketch(size_t idx, const SketchPair & sp);
 };
