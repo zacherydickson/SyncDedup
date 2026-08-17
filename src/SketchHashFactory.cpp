@@ -1,6 +1,31 @@
 #include "SketchHashFactory.h"
 #include <future>
 
+
+// ################### HashedFastqSet #####################################
+
+void HashedFastqSet::insert(const SketchPair & sp, const FastqTemplate_t & fqt)
+{
+    size_t idx = templateVec.size();
+    templateVec.emplace_back(fqt);
+    this->add_sketch(idx,sp);
+}
+
+void HashedFastqSet::add_sketch(size_t idx, const SketchPair & sp)
+{
+#ifndef NDEBUG
+    if(idx >= templateVec.size()){
+        throw std::logic_error("Attempt to add a sketch for a template that has not been added");
+    }
+#endif
+    templateVec[idx].meanQual = sp.meanQuality;
+    sketchMap.insert(2*idx+0,sp.first);
+    sketchMap.insert(2*idx+1,sp.second);
+}
+
+
+// ################### SKETCH HASH FACTORY #####################################
+
 SketchHashFactory::SketchHashFactory(Sketcher && sketcher, size_t nThread,
         int phredOffset)
     :   sketcher_(std::move(sketcher)), threadPool_(nThread),
@@ -14,6 +39,7 @@ std::vector<std::future<std::vector<SketchPair>>>
 {
     if(!batchSize) { batchSize = 1; }
     std::vector<std::future<std::vector<SketchPair>>> futureVec;
+    std::vector<FastqTemplate_t> fqtVec;
     bool bContinue = true;
     while(bContinue) {
         std::vector<FastqTemplate_t> batch;
@@ -25,10 +51,7 @@ std::vector<std::future<std::vector<SketchPair>>>
         }
         if(batch.size()) {
             for(auto & fqt : batch){
-                ExtendedFastqTemplate_t efqt;
-                efqt.name = fqt.name;
-                efqt.segVec = fqt.segVec;
-                hfqSet.templateVec.push_back(efqt);
+                hfqSet.templateVec.emplace_back(fqt);
             }
             std::future<std::vector<SketchPair>> future = threadPool_.push(
                         [&batch,this](int id) {
@@ -89,16 +112,7 @@ SketchPair SketchHashFactory::GeneratePairedSketch(const FastqTemplate_t & fqt)
 
 
 
-void SketchHashFactory::InsertFqt(  size_t idx, const SketchPair & sp,
-                                    const FastqTemplate_t & fqt,
-                                    HashedFastqSet & hfqSet)
-{
-    ExtendedFastqTemplate_t efqt;
-    efqt.meanQual = sp.meanQuality;
-    hfqSet.sketchMap.insert(2*idx+0,sp.first);
-    hfqSet.sketchMap.insert(2*idx+1,sp.second);
-    hfqSet.templateVec.push_back(efqt);
-}
+
 
 size_t SketchHashFactory::NoWorkerFill( FastqTemplateSource & src,
                                        HashedFastqSet & hfqSet)
@@ -106,9 +120,8 @@ size_t SketchHashFactory::NoWorkerFill( FastqTemplateSource & src,
     FastqTemplate_t fqt;
     size_t nInserted = 0;
     while( src(fqt) ) {
-        size_t fqtIdx = hfqSet.templateVec.size();
-        const SketchPair & sp = GeneratePairedSketch(fqt);
-        InsertFqt(fqtIdx, sp, fqt, hfqSet);
+        SketchPair sp = GeneratePairedSketch(fqt);
+        hfqSet.insert(sp, fqt);
         nInserted++;
     }
     return nInserted;
@@ -137,8 +150,7 @@ size_t SketchHashFactory::ParallelFill( FastqTemplateSource & src,
     for(auto & future : sketchFutureVec){
         const std::vector<SketchPair> & spVec = future.get();
         for(const auto & sp : spVec) {
-            InsertFqt(fqtIdx, sp, hfqSet.templateVec[fqtIdx], hfqSet);
-            fqtIdx++;
+            hfqSet.add_sketch(fqtIdx++, sp);
             nInserted++;
         }
     }
