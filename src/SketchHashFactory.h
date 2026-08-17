@@ -26,6 +26,11 @@ struct HashedFastqSet {
     std::deque<ExtendedFastqTemplate_t> templates;
     void insert(const SketchPair& sp, const FastqTemplate_t & fqt);
     void add_sketch(size_t idx, const SketchPair & sp);
+    //TODO: add tests
+    static bool skparity(size_t sketchId) { return sketchId & 1; } 
+    static size_t sk2fqt(size_t sketchId) { return sketchId >> 1; } 
+    static size_t fqt2sk(size_t fqtId, bool parity) { 
+        return (fqtId << 1) | parity; } 
 };
 
 class SketchHashFactory {

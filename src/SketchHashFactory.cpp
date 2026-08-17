@@ -19,8 +19,8 @@ void HashedFastqSet::add_sketch(size_t idx, const SketchPair & sp)
     }
 #endif
     templates[idx].meanQual = sp.meanQuality;
-    sketchMap.insert(2*idx+0,sp.first);
-    sketchMap.insert(2*idx+1,sp.second);
+    sketchMap.insert(fqt2sk(idx,false),sp.first);
+    sketchMap.insert(fqt2sk(idx,true),sp.second);
 }
 
 
