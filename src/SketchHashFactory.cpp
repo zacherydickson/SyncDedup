@@ -42,29 +42,36 @@ std::vector<std::future<std::vector<SketchPair>>>
     std::vector<FastqTemplate_t> fqtVec;
     bool bContinue = true;
     while(bContinue) {
-        std::vector<FastqTemplate_t> batch;
+        size_t batchStart = hfqSet.templateVec.size();
+        size_t batchEnd = batchStart;
         if(batchSize > 1){ //For Actual batches
+            std::vector<FastqTemplate_t> batch;
             batch = src.get_block(batchSize);
-        } else { //For singlet batches, can use the lower overhead functor
-            batch.emplace_back();
-            if( ! src(batch.front()) ) { batch.clear(); }
-        }
-        if(batch.size()) {
             for(auto & fqt : batch){
                 hfqSet.templateVec.emplace_back(fqt);
             }
+            batchEnd += batch.size();
+        } else { //For singlet batches, can use the functor - lower overhead
+            FastqTemplate_t fqt;
+            if( src(fqt) ) {
+                hfqSet.templateVec.emplace_back(fqt);
+                batchEnd++;
+            }
+        }
+        if(batchEnd > batchStart) {
             std::future<std::vector<SketchPair>> future = threadPool_.push(
-                        [&batch,this](int id) {
+                        [&hfqSet,batchStart,batchEnd,this](int id) {
                             std::vector<SketchPair> spVec;
-                            for(auto & fqt : batch) {
-                                spVec.push_back(this->GeneratePairedSketch(fqt));
+                            for(size_t i = batchStart; i < batchEnd; i++) {
+                                FastqTemplate_t & fqt = hfqSet.templateVec[i];
+                                spVec.push_back( this->GeneratePairedSketch(fqt));
                             }
                             return spVec;
                         } );
             futureVec.push_back(std::move(future));
         }
-        bContinue = (batch.size() == batchSize);
-    }
+        bContinue = ( (batchEnd - batchStart) >= batchSize);
+    } 
     return futureVec;
 }
 
@@ -140,6 +147,7 @@ size_t SketchHashFactory::ParallelFill( FastqTemplateSource & src,
         batchSize = 1;
     }
 
+
     //Store where the end of the hfqSet template vec ended
     size_t fqtIdx = hfqSet.templateVec.size();
 
@@ -154,5 +162,6 @@ size_t SketchHashFactory::ParallelFill( FastqTemplateSource & src,
             nInserted++;
         }
     }
+
     return nInserted;
 }

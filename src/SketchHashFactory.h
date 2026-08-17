@@ -1,11 +1,12 @@
 #ifndef SKETCH_HASH_FACTORY_HEADER_GAURD_
 #define SKETCH_HASH_FACTORY_HEADER_GAURD_
 
+#include <deque>
 #include <ctpl_stl.h>
-#include <Sketcher.h>
-#include <LocalSyncmerMap.h>
 #include <FastqIO.h>
 #include <FastqTemplateSource.h>
+#include <LocalSyncmerMap.h>
+#include <Sketcher.h>
 #include <vector>
 
 struct ExtendedFastqTemplate_t : public FastqTemplate_t {
@@ -22,7 +23,7 @@ struct SketchPair {
 
 struct HashedFastqSet {
     LocalSyncmerMap sketchMap;
-    std::vector<ExtendedFastqTemplate_t> templateVec;
+    std::deque<ExtendedFastqTemplate_t> templateVec;
     void insert(const SketchPair& sp, const FastqTemplate_t & fqt);
     void add_sketch(size_t idx, const SketchPair & sp);
 };
