@@ -31,9 +31,16 @@ double initMeanQual2pair =  (   initMeanQual2fwd *
                                 initFqt2rev.segVec[0].seq.length()
                             );
 
+TEST_CASE("SketchHashFactory Construction","[SketchHashFactory][Construction]") {
+    auto nWorker = GENERATE(0,1,2,10);
+    INFO("and Given: nWorker is " << nWorker);
+    auto phredOffset = GENERATE(0,33,64);
+    INFO("and Given: phredOffset is " << phredOffset);
+    REQUIRE_NOTHROW( SketchHashFactory(Sketcher(7,5,1)) );
+}
 
 TEST_CASE("Mean Quality is correctly calculated","[SketchHashFactory]") {
-    SketchHashFactory shFactory(Sketcher(13,5,1));
+    SketchHashFactory shFactory(Sketcher(7,5,1));
     struct testData {
         FastqTemplate_t fqt;
         double qual;
@@ -46,19 +53,75 @@ TEST_CASE("Mean Quality is correctly calculated","[SketchHashFactory]") {
                                         { initFqt2pair, initMeanQual2pair } };
     for( const testData & td : fqtVec) {
         REQUIRE_THAT(   shFactory.CalculateMeanQuality(td.fqt),
-                        Catch::Matchers::WithinAbs(td.qual,0.001)
-                     );
+                        Catch::Matchers::WithinAbs(td.qual,0.001) );
     }
 }
 
 
 SCENARIO("Paired Sketches are generated correctly","[SketchHashFactory]") {
-    //TODO:
+    Sketcher externalSketcher(7,5,1);
+    Sketch fwdSk = externalSketcher.generate_sketch(initFqt1fwd.segVec[0].seq);
+    Sketch revSk = externalSketcher.generate_sketch(initFqt1rev.segVec[0].seq);
+    bool bPaired = GENERATE(true,false);
+    INFO("and Given: bPaired is " << bPaired);
+    FastqTemplate_t & input = (bPaired) ? initFqt1pair : initFqt1fwd;
+    GIVEN("A valid Sketch Factory") {
+        SketchHashFactory shFactory(Sketcher(7,5,1));
+        WHEN("A Sketch Pair object is generated") {
+            SketchPair sp = shFactory.GeneratePairedSketch(input);
+            THEN("The sketches match what an external sketcher would generate") {
+                REQUIRE( sp.first == fwdSk );
+                if(bPaired) {
+                    REQUIRE( sp.second == revSk );
+                }
+            }
+            THEN("The meanQuality matches what would be directly calculated") {
+                REQUIRE_THAT(   shFactory.CalculateMeanQuality(input),
+                                Catch::Matchers::WithinAbs(sp.meanQuality,0.001) );
+            }
+        }
+    }
 }
 
 
-SCENARIO("Fqt's are properly inserted into the HashedFastqSet ","[SketchHashFactory]") {
-    //TODO:
+SCENARIO("Fqt's are properly inserted into the HashedFastqSet ","[HashedFastqSet]") {
+    bool bPaired = GENERATE(true,false);
+    INFO("and Given: bPaired is " << bPaired);
+    FastqTemplate_t & input = (bPaired) ? initFqt1pair : initFqt1fwd;
+    SketchHashFactory shFactory(Sketcher(7,5,1));
+    GIVEN("A fully sketched fastqTemplate and an hfqSet") {
+        HashedFastqSet hfqSet;
+        size_t startingNTemplate = hfqSet.templateVec.size();
+        size_t startingNHit = hfqSet.sketchMap.hits();
+        SketchPair sp = shFactory.GeneratePairedSketch(input);
+        size_t nHit = sp.first.size();
+        if(bPaired) { nHit += sp.second.size(); }
+        WHEN("The template and sketch are inserted") {
+            hfqSet.insert(sp,input);
+            THEN("The number of stored templates and hits increases correctly") {
+                REQUIRE( hfqSet.templateVec.size() == startingNTemplate + 1 );
+                REQUIRE( hfqSet.sketchMap.hits() == startingNHit + nHit );
+            }
+        }
+        WHEN("The hfqSet has the template inserted prior to sketching") {
+            size_t fqtIdx = hfqSet.templateVec.size();
+            hfqSet.templateVec.emplace_back(input);
+            startingNTemplate = hfqSet.templateVec.size();
+            REQUIRE ( startingNHit == hfqSet.sketchMap.hits() );
+            AND_WHEN("The sketch is added") {
+                hfqSet.add_sketch(fqtIdx,sp);
+                THEN("The meanQuality for the template is updated") {
+                    REQUIRE ( hfqSet.templateVec[fqtIdx].meanQual == sp.meanQuality );
+                }
+                THEN("The number of stored hits increases"){
+                    REQUIRE ( hfqSet.sketchMap.hits() == startingNHit + nHit );
+                }
+                THEN("The number of templates is unchanged") {
+                    REQUIRE( hfqSet.templateVec.size() == startingNTemplate );
+                }
+            }
+        }
+    }
 }
 
 
