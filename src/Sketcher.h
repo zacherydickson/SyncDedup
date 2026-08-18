@@ -65,6 +65,10 @@ public:
     static const Alphabet DNA_Alphabet;
     static const Alphabet RNA_Alphabet;
 
+    size_t k() const { return k_; }
+    size_t s() const { return s_; }
+    double d() const { return double(c_); }
+
 private:
     const size_t k_;
     const size_t s_;
