@@ -5,30 +5,69 @@
 #include <SketchHashFactory.h>
 #include <unordered_map>
 
+namespace DuplicateFilter {
+
+typedef std::pair<std::vector<int>,std::vector<int>> HitCandidate;
+typedef std::unordered_map<size_t,HitCandidate> HitCandidateMap;
+
+struct TemplateSummary_t {
+    const double meanQual;
+    const size_t length;
+    const size_t idx;
+        //TODO: ADD Tests
+    bool operator<(const TemplateSummary_t & other) const;
+};
+
+struct CandidateDuplicateFinder {
+    size_t fqtIdx;
+    bool bPaired;
+    SketchPair sp;
+        //TODO: ADD Tests
+    HitCandidateMap operator()(const HashedFastqSet & hfqSet ) const ;
+};
+
+struct IndelFilter {
+    double MaxIndelRate;
+    //True if the input passes the filter, false otherwise
+        //TODO: ADD Tests
+    bool operator()(const FastqTemplate_t & fqt,
+                    const HitCandidate & hc) const ;
+};
+
+
+struct SubstitutionFilter {
+    double MaxSubRate;
+    //True if the input passes the filter, false otherwise
+        //TODO: ADD Tests
+    bool operator()(const Sketcher & sketcher, const FastqTemplate_t & fqt,
+                    const SketchPair & sp, const HitCandidate & hc) const ;
+};
+
 class DuplicateFilter {
     public:
+        //TODO: ADD Tests
         DuplicateFilter() = delete;
         DuplicateFilter(DuplicateFilter & other)
-            : DuplicateFilter(other.substitutionRate_, other.indelRate_) {}
-        DuplicateFilter(double subRate, double indelRate) 
-            : substitutionRate_(subRate), indelRate_(indelRate) {}
+            :   indelFilter_{other.indelFilter_.MaxIndelRate},
+                subsFilter_{other.subsFilter_.MaxSubRate} {}
+        DuplicateFilter(double indelRate = DefaultIndelRate,
+                        double subRate = DefaultSubstitutionRate)
+            : indelFilter_{indelRate}, subsFilter_{subRate} {}
 
+        //TODO: ADD Tests
         bool operator()(const Sketcher & sketcher,
                         size_t fqtIdx,
                         const HashedFastqSet & hfqSet) const;
-    protected:
-        const double substitutionRate_ = 0.01;
-        const double indelRate_ = 0.0001;
 
-        using HitCandidate = std::pair<std::vector<size_t>,std::vector<size_t>>;
-        using HitCandidateMap = std::unordered_map<size_t,HitCandidate>;
-        static HitCandidateMap FindCandidateHits(
-                    size_t fqtIdx, bool bPaired, const SketchPair & sp,
-                    const HashedFastqSet & hfqSet );
-        static SketchPair GeneratePairedSketch( const Sketcher & sketcher, 
-                                                const FastqTemplate_t & fqt);
+        static constexpr double DefaultIndelRate = 0.0001;
+        static constexpr double DefaultSubstitutionRate = 0.01;
+    protected:
+        const IndelFilter indelFilter_;
+        const SubstitutionFilter subsFilter_;
 
 };
+
+} // namespace
 
 #endif //DUPLICATE_FILTER_HEADER_GAURD_
 
