@@ -107,6 +107,39 @@ TempFile constructTF(std::string ext, std::vector<FastqTemplate_t> initVec = {},
     return TempFile(dynamic_cast<std::stringstream*>(ss.get())->str(),ext);
 }
 
+
+TEST_CASE ("FastqSegment equality works","[FastqSegment_t]") {
+    for(size_t i = 0; i < initFqt1pair.segVec.size(); i++) {
+        for(size_t j = 0; j < initFqt1pair.segVec.size(); j++) {
+            INFO("and Given: segment_i ("<< initFqt1pair.segVec[i].to_string()
+                    << ") vs segment_j ("<< initFqt1pair.segVec[j].to_string()
+                    <<")");
+            REQUIRE( (initFqt1pair.segVec[i] == initFqt1pair.segVec[j]) ==
+                     (i == j) );
+        }
+    }
+}
+
+TEST_CASE("FastqTemplate equality works","[FastqTemplate_t]") {
+    std::vector<FastqTemplate_t> vec{initFqt1pair,initFqt1fwd,initFqt2pair};
+    for(size_t i = 0; i < vec.size(); i++) {
+        for(size_t j = 0; j < vec.size(); j++) {
+            INFO("and Given: template_i (" << vec[i].to_string() << 
+                    ") vs template_j (" << vec[j].to_string() << ")");
+            REQUIRE( (vec[i] == vec[j]) == (i == j) );
+        }
+    }
+}
+
+TEST_CASE("FastqTemplate length works","[FastqTemplate_t]") {
+    std::vector<FastqTemplate_t> vec{initFqt1pair,initFqt1fwd,initFqt1rev,
+                                     initFqt2pair,initFqt2fwd,initFqt2rev};
+    std::vector<size_t> exp{22,11,11,19,9,10};
+    auto idx = GENERATE(0,1,2,3,4,5);
+    INFO("and Given: template is " << vec[idx].to_string());
+    REQUIRE( vec[idx].length() == exp[idx] );
+}
+
 SCENARIO ("Object Construction from Injection", "[FastqIO][Construction]") {
     auto mode = GENERATE(FastqIO::IO_IN, FastqIO::IO_OUT);
     INFO( "Given: mode is " << ( (mode == FastqIO::IO_IN) ? "IO_IN" : "IO_OUT"));
