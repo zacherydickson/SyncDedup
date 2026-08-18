@@ -59,6 +59,36 @@ endloop:
     return ss_ptr;
 }
 
+SCENARIO("HashedFastqSet Index Mapping","[HashedFastqSet]") {
+    GIVEN("A sketchMap index") {
+        size_t skIdx = GENERATE(take(100, random(0, 1000000)));
+        bool parity = HashedFastqSet::skparity(skIdx);
+        INFO("and Given: skIdx, parity is " << skIdx << ", " << parity);
+        WHEN("The index is round trip converted") {
+            size_t fqtIdx = HashedFastqSet::sk2fqt(skIdx);
+            size_t skIdx_prime = HashedFastqSet::fqt2sk(fqtIdx,parity);
+            THEN("The index and parity are preserved") {
+                REQUIRE( skIdx_prime == skIdx );
+                REQUIRE( parity ==  HashedFastqSet::skparity(skIdx_prime) );
+            }
+        }
+    }
+    GIVEN("A template index and a parity") {
+        size_t fqtIdx = GENERATE(take(50, random(0, 1000000)));
+        INFO("and Given: fqtIdx is " << fqtIdx );
+        bool parity = GENERATE(true,false);
+        INFO("and Given: parity is " << parity );
+        WHEN("The index is round trip converted") {
+            size_t skIdx = HashedFastqSet::fqt2sk(fqtIdx,parity);
+            size_t fqtIdx_prime = HashedFastqSet::sk2fqt(skIdx);
+            THEN("The index and parity are preserved") {
+                REQUIRE( fqtIdx_prime == fqtIdx );
+                REQUIRE( parity ==  HashedFastqSet::skparity(skIdx) );
+            }
+        }
+    }
+}
+
 TEST_CASE("SketchHashFactory Construction","[SketchHashFactory][Construction]") {
     auto nWorker = GENERATE(0,1,2,10);
     INFO("and Given: nWorker is " << nWorker);
