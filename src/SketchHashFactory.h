@@ -40,7 +40,10 @@ class SketchHashFactory {
                         int phredOffset = SketchHashFactory::DefaultPhredOffset);
     
     size_t FillHashedFastqSet(FastqTemplateSource & src, HashedFastqSet & hfqSet);
-    SketchPair GeneratePairedSketch(const FastqTemplate_t & fqt) const ;
+    static SketchPair GeneratePairedSketch( const Sketcher & sketcher,
+                                            const FastqTemplate_t & fqt);
+    //TODO: Modify/Add Tests
+    SketchPair GeneratePairedSketchWithQual(const FastqTemplate_t & fqt) const ;
     double CalculateMeanQuality(const FastqTemplate_t & fqt) const ;
     static const int DefaultPhredOffset = 33;
     protected:

@@ -64,7 +64,7 @@ std::vector<std::future<std::vector<SketchPair>>>
                             std::vector<SketchPair> spVec;
                             for(size_t i = batchStart; i < batchEnd; i++) {
                                 FastqTemplate_t & fqt = hfqSet.templates[i];
-                                spVec.push_back( this->GeneratePairedSketch(fqt));
+                                spVec.push_back( this->GeneratePairedSketchWithQual(fqt));
                             }
                             return spVec;
                         } );
@@ -100,8 +100,7 @@ size_t SketchHashFactory::FillHashedFastqSet( FastqTemplateSource & src,
     return 0ULL;
 }
 
-SketchPair SketchHashFactory::GeneratePairedSketch(const FastqTemplate_t & fqt)
-    const 
+SketchPair SketchHashFactory::GeneratePairedSketch(const Sketcher & sketcher, const FastqTemplate_t & fqt)
 {
 #ifndef NDEBUG
     if(fqt.segVec.size() == 0) {
@@ -109,10 +108,17 @@ SketchPair SketchHashFactory::GeneratePairedSketch(const FastqTemplate_t & fqt)
     }
 #endif
     SketchPair sp;
-    sp.first = sketcher_.generate_sketch(fqt.segVec[0].seq);
+    sp.first = sketcher.generate_sketch(fqt.segVec[0].seq);
     if(fqt.segVec.size() > 1 ){
-        sp.second = sketcher_.generate_sketch(fqt.segVec[1].seq);
+        sp.second = sketcher.generate_sketch(fqt.segVec[1].seq);
     }
+    return sp;
+}
+
+SketchPair SketchHashFactory::GeneratePairedSketchWithQual(const FastqTemplate_t & fqt)
+    const
+{
+    SketchPair sp = GeneratePairedSketch(sketcher_,fqt);
     sp.meanQuality = CalculateMeanQuality(fqt);
     return sp;
 }
@@ -127,7 +133,7 @@ size_t SketchHashFactory::NoWorkerFill( FastqTemplateSource & src,
     FastqTemplate_t fqt;
     size_t nInserted = 0;
     while( src(fqt) ) {
-        SketchPair sp = GeneratePairedSketch(fqt);
+        SketchPair sp = GeneratePairedSketchWithQual(fqt);
         hfqSet.insert(sp, fqt);
         nInserted++;
     }
