@@ -104,7 +104,7 @@ SCENARIO("Paired Sketches are generated correctly","[SketchHashFactory]") {
     GIVEN("A valid Sketch Factory") {
         SketchHashFactory shFactory(Sketcher(7,5,1));
         WHEN("A Sketch Pair object is generated") {
-            SketchPair sp = shFactory.GeneratePairedSketch(input);
+            SketchPair sp = shFactory.GeneratePairedSketchWithQual(input);
             THEN("The sketches match what an external sketcher would generate") {
                 REQUIRE( sp.first == fwdSk );
                 if(bPaired) {
@@ -139,7 +139,7 @@ SCENARIO("Fqt's are properly inserted into the HashedFastqSet ","[HashedFastqSet
             startingNTemplate = hfqSet.templates.size();
             REQUIRE ( startingNHit == hfqSet.sketchMap.hits() );
         }
-        SketchPair sp = shFactory.GeneratePairedSketch(input);
+        SketchPair sp = shFactory.GeneratePairedSketchWithQual(input);
         size_t nHit = sp.first.size();
         if(bPaired) { nHit += sp.second.size(); }
         WHEN("The template and sketch are added/inserted") {
