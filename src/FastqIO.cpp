@@ -21,6 +21,7 @@ std::string FastqSegment_t::to_string() const {
 
 bool FastqTemplate_t::operator==(const FastqTemplate_t & other) const {
     return  ( name == other.name ) &&
+            ( segVec.size() == other.segVec.size()) &&
             std::equal(segVec.begin(),segVec.end(),other.segVec.begin());
 }
 

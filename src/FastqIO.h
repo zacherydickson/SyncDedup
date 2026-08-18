@@ -19,7 +19,6 @@ struct FastqSegment_t {
 struct FastqTemplate_t {
     std::string name;
     std::vector<FastqSegment_t> segVec;
-    //TODO: Add Test
     size_t length() const ;
     bool operator==(const FastqTemplate_t & other) const;
 #ifndef NDEBUG 
