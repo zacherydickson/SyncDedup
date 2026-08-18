@@ -12,6 +12,7 @@ bool FastqSegment_t::operator==(const FastqSegment_t & other) const {
             ( qual == other.qual );
 }
 
+
 #ifndef NDEBUG
 std::string FastqSegment_t::to_string() const {
     return desc + ", " + seq + ", " + qual;
@@ -21,6 +22,15 @@ std::string FastqSegment_t::to_string() const {
 bool FastqTemplate_t::operator==(const FastqTemplate_t & other) const {
     return  ( name == other.name ) &&
             std::equal(segVec.begin(),segVec.end(),other.segVec.begin());
+}
+
+
+size_t FastqTemplate_t::length() const {
+    size_t length = 0;
+    for(auto & seg : segVec) {
+        length += seg.seq.length();
+    }
+    return length;
 }
 
 #ifndef NDEBUG
