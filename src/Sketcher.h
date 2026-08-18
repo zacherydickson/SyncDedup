@@ -17,6 +17,9 @@ struct SketchElement {
     }
 };
 
+
+//The behaviour for Sketches is that the order of SketchElements in the vector
+// matches the order of the syncmers in the sequence
 using Sketch = std::vector<SketchElement>;
 
 class Sketcher {
