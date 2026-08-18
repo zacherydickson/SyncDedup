@@ -124,7 +124,7 @@ TEST_CASE("FastqTemplate equality works","[FastqTemplate_t]") {
     std::vector<FastqTemplate_t> vec{initFqt1pair,initFqt1fwd,initFqt2pair};
     for(size_t i = 0; i < vec.size(); i++) {
         for(size_t j = 0; j < vec.size(); j++) {
-            INFO("and Given: template_i (" << vec[i].to_string() << 
+            INFO("and Given: template_i (" << vec[i].to_string() <<
                     ") vs template_j (" << vec[j].to_string() << ")");
             REQUIRE( (vec[i] == vec[j]) == (i == j) );
         }
@@ -551,7 +551,7 @@ SCENARIO ("Round Trip with injected streams", "[FastqIO][Reading][Writing]") {
                 REQUIRE( bool(sp.second) == (nStream > 1) );
                 sp.first->seekg(0);
                 INFO("Written stream1 is: '\n" << dynamic_cast<std::stringstream*>(sp.first.get())->str() << "\n'");
-                if(sp.second){ 
+                if(sp.second){
                     sp.second->seekg(0);
                     INFO("Written stream2 is: '\n" << dynamic_cast<std::stringstream*>(sp.second.get())->str() << "\n'");
                 }
@@ -577,7 +577,7 @@ SCENARIO ("Round Trip with temporary files", "[FastqIO][Reading][Writing]") {
     INFO( "and Given: ext is " << ext );
     auto [nStream, bInterleaved] = GENERATE(table<int,bool>({
                 {1,false}, {1,true}, {2,false} } ));
-    INFO("and Given: mode (nStream,bInterleaved) is (" << 
+    INFO("and Given: mode (nStream,bInterleaved) is (" <<
             nStream << ", " << bInterleaved << ")" );
     TempFile tf1 = constructTF(ext);
     TempFile tf2 = constructTF(ext);
@@ -756,7 +756,7 @@ SCENARIO("Telling handler positions","[FastqIO][Telling]") {
         bool bInterleaved = GENERATE(true, false);
         INFO("And Given: bInterleaved is " << bInterleaved);
         auto ss_ptr = constructSS({initFqt1pair},postappend);
-        size_t pos = (mode == FastqIO::IO_IN) ? ss_ptr->tellg() : ss_ptr->tellp(); 
+        size_t pos = (mode == FastqIO::IO_IN) ? ss_ptr->tellg() : ss_ptr->tellp();
         FastqIO handler(std::move(ss_ptr),mode,bInterleaved);
         REQUIRE( handler.canWrite() == (mode == FastqIO::IO_OUT) );
         REQUIRE( handler.canRead() == (mode == FastqIO::IO_IN) );
@@ -771,8 +771,8 @@ SCENARIO("Telling handler positions","[FastqIO][Telling]") {
     GIVEN("A two stream handler") {
         auto ss1_ptr = constructSS({initFqt1fwd},postappend);
         auto ss2_ptr = constructSS({initFqt1rev},postappend);
-        size_t pos1 = (mode == FastqIO::IO_IN) ? ss1_ptr->tellg() : ss1_ptr->tellp(); 
-        size_t pos2 = (mode == FastqIO::IO_IN) ? ss2_ptr->tellg() : ss2_ptr->tellp(); 
+        size_t pos1 = (mode == FastqIO::IO_IN) ? ss1_ptr->tellg() : ss1_ptr->tellp();
+        size_t pos2 = (mode == FastqIO::IO_IN) ? ss2_ptr->tellg() : ss2_ptr->tellp();
         FastqIO handler(std::move(ss1_ptr),std::move(ss2_ptr),mode);
         REQUIRE( handler.canWrite() == (mode == FastqIO::IO_OUT) );
         REQUIRE( handler.canRead() == (mode == FastqIO::IO_IN) );
