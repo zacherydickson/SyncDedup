@@ -131,10 +131,10 @@ bool ExpectedPass(double maxRate, double rate, size_t denom) {
     return (obsN <= maxN);
 }
 
-bool PairedExpectedPass(double maxRate, std::pair<double,double> ratePair, bool bPaired, size_t denom) {
-    bool expected = ExpectedPass(maxRate, ratePair.first, denom);
+bool PairedExpectedPass(double maxRate, std::pair<double,double> ratePair, bool bPaired, std::pair<size_t,size_t> denomPair) {
+    bool expected = ExpectedPass(maxRate, ratePair.first, denomPair.first);
     if(bPaired) {
-        expected = expected && ExpectedPass(maxRate,ratePair.second,denom);
+        expected = expected && ExpectedPass(maxRate,ratePair.second,denomPair.second);
     }
     return expected;
 }
@@ -180,12 +180,15 @@ SCENARIO ("Indel filtration on known cases", "[IndelFilter][Unit]") {
         CAPTURE(maxIndelRate);
         IndelFilter indelFilter{maxIndelRate};
         AND_GIVEN("A template") {
-            size_t seqLen = GENERATE(150);
-            CAPTURE(seqLen);
+            size_t seqLen1 = GENERATE(150);
+            size_t seqLen2 = GENERATE(100);
+            bool bDiffLen = GENERATE(true,false);
+            if(!bDiffLen) { seqLen2 = seqLen1; }
+            CAPTURE(seqLen1,seqLen2);
             bool bPaired = GENERATE(true,false);
             CAPTURE(bPaired);
-            FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen,
-                                                bPaired ? seqLen : 0);
+            FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen1,
+                                                bPaired ? seqLen2 : 0);
             AND_GIVEN("A hit candidate"){
                 double logitEpsilon1 = GENERATE(-1.0,0.0,1.0);
                 double logitEpsilon2 = GENERATE(-1.0,0.0,1.0);
@@ -202,7 +205,7 @@ SCENARIO ("Indel filtration on known cases", "[IndelFilter][Unit]") {
                 INFO("and Given: indelRates are " << ratePair.first <<
                         (bPaired ? ", " + std::to_string(ratePair.second) : "" ));
                 bool expected = PairedExpectedPass( maxIndelRate, ratePair,
-                                                    bPaired, seqLen-1);
+                                                    bPaired, {seqLen1-1,seqLen2-1});
                 WHEN("The filter is called") {
                     bool bRes = indelFilter(fqt,hc);
                     THEN( "The result matches expectation" ) {
@@ -217,22 +220,24 @@ SCENARIO ("Indel filtration on known cases", "[IndelFilter][Unit]") {
 
 
 TEST_CASE ("Specific Indel Case","[.SpecIndelCase]") {
-    double maxIndelRate = 0.1970667069006693;
-    size_t seqLen = 111;
+    //TODO: Debug why this case fails
+    double maxIndelRate = 0.43087373746039748;
+    size_t seqLen1 = 182;
+    size_t seqLen2 = 155;
     bool bPaired = true;
-    double targetIndelRate1 = 0.20381634913327029;
-    double targetIndelRate2 = 0.20381634913327029;
-    CAPTURE( maxIndelRate, seqLen, bPaired, targetIndelRate1, targetIndelRate2 );
+    double targetIndelRate1 = 0.17560484551515509;
+    double targetIndelRate2 = 0.43799889436149331;
+    CAPTURE( maxIndelRate, seqLen1,seqLen2, bPaired, targetIndelRate1, targetIndelRate2 );
     IndelFilter indelFilter{maxIndelRate};
-    FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen,
-                                        bPaired ? seqLen : 0);
+    FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen1,
+                                        bPaired ? seqLen2 : 0);
     HitCandidate hc;
     IndelOffsetConstructor ioc;
     auto ratePair = ConstructHC(hc,fqt,ioc,targetIndelRate1,targetIndelRate2);
     INFO("and Given: indelRates are " << ratePair.first <<
             (bPaired ? ", " + std::to_string(ratePair.second) : "" ));
     bool expected = PairedExpectedPass( maxIndelRate, ratePair,
-                                        bPaired, seqLen-1);
+                                        bPaired, {seqLen1-1,seqLen2-1});
     bool bRes = indelFilter(fqt,hc);
     REQUIRE( bRes == expected );
 }
@@ -240,15 +245,20 @@ TEST_CASE ("Specific Indel Case","[.SpecIndelCase]") {
 SCENARIO ("Indel issue Discovery", "[IndelFilter][.Discovery]") {
     GIVEN("An indel filter") {
         double maxIndelRate = GENERATE(take(10,random(0.0,1.0)));
-        size_t seqLen = GENERATE(take(10,random(1,1000)));
-        CAPTURE(seqLen);
+        size_t seqLen1 = GENERATE(take(10,random(1,1000)));
+        size_t seqLen2 = GENERATE(take(10,random(1,1000)));
+        bool bDiffLen = GENERATE(true, false);
+        if(!bDiffLen) {
+            seqLen2 = seqLen1;
+        }
+        CAPTURE(seqLen1,seqLen2);
         CAPTURE(maxIndelRate);
         IndelFilter indelFilter{maxIndelRate};
         AND_GIVEN("A template") {
             bool bPaired = GENERATE(true,false);
             CAPTURE(bPaired);
-            FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen,
-                                                bPaired ? seqLen : 0);
+            FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen1,
+                                                bPaired ? seqLen2 : 0);
             AND_GIVEN("A hit candidate"){
                 double targetIndelRate1 = GENERATE(take(10,random(0.0,1.0)));
                 double targetIndelRate2 = GENERATE(take(10,random(0.0,1.0)));
@@ -258,14 +268,14 @@ SCENARIO ("Indel issue Discovery", "[IndelFilter][.Discovery]") {
                 } else if(!bDiffRate) {
                     targetIndelRate2 = targetIndelRate1;
                 }
-                CAPTURE(bDiffRate,targetIndelRate1,targetIndelRate2);
+                CAPTURE(targetIndelRate1,targetIndelRate2);
                 IndelOffsetConstructor ioc;
                 HitCandidate hc;
                 auto ratePair = ConstructHC(hc,fqt,ioc,targetIndelRate1,targetIndelRate2);
                 INFO("and Given: indelRates are " << ratePair.first <<
                         (bPaired ? ", " + std::to_string(ratePair.second) : "" ));
                 bool expected = PairedExpectedPass( maxIndelRate, ratePair,
-                                                    bPaired, seqLen-1);
+                                                    bPaired, {seqLen1-1,seqLen2-1});
                 WHEN("The filter is called") {
                     bool bRes = indelFilter(fqt,hc);
                     THEN( "The result matches expectation" ) {
