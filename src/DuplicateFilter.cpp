@@ -102,7 +102,7 @@ bool IndelFilter::operator()(   const FastqTemplate_t & fqt,
 {
     bool bPaired = fqt.segVec.size() > 1;
     for(uint8_t parity = 0; parity < (bPaired ? 2 : 1); parity++) {
-        const std::vector<int> & offVec = (parity == 1) ? hc.first : hc.second;
+        const std::vector<int> & offVec = (parity == 0) ? hc.first : hc.second;
         size_t maxIndels = std::ceil(double(fqt.segVec[parity].seq.length()-1) * MaxIndelRate);
         size_t count = 0;
         size_t i0 = 0;
@@ -119,9 +119,10 @@ bool IndelFilter::operator()(   const FastqTemplate_t & fqt,
             if(off == 0) { zeroOffCount++; }
             lastOffset = off;
         }
+        //std::cerr << count << "\t" << zeroOffCount << "\t" << indelCount << " vs " << maxIndels << "\n";
         if( !count ) { continue; }
         if( !zeroOffCount ) { return false; } //There are no zero-offset sketches
-        if( indelCount >= maxIndels ) { return false; } //There are too many offset swaps
+        if( indelCount > maxIndels ) { return false; } //There are too many offset swaps
     }
     return true;
 }
@@ -138,7 +139,7 @@ bool SubstitutionFilter::operator()(const Sketcher & sketcher,
     bool bPaired = fqt.segVec.size() > 1;
     std::vector<MMInterval> mmIntervals;
     for(uint8_t parity = 0; parity < (bPaired ? 2 : 1); parity++) {
-        const Sketch & sketch = (parity == 1) ? sp.first : sp.second;
+        const Sketch & sketch = (parity == 0) ? sp.first : sp.second;
         const std::vector<int> & offVec = (parity == 1) ? hc.first : hc.second;
         size_t maxSubs = std::ceil(double(fqt.segVec[parity].seq.length()) * MaxSubRate);
         //Collect the unique intervals which must contain at least one substitution
