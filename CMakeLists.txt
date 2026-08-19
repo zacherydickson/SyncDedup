@@ -124,7 +124,7 @@ target_sources(DuplicateFilter
             src/DuplicateFilter.h
 )
 target_link_libraries(DuplicateFilter
-    PRIVATE
+    PUBLIC
         SketchHashFactory
 )
 
