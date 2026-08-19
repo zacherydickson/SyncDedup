@@ -100,7 +100,7 @@ size_t SketchHashFactory::FillHashedFastqSet( FastqTemplateSource & src,
     return 0ULL;
 }
 
-SketchPair SketchHashFactory::GeneratePairedSketch(const Sketcher & sketcher, const FastqTemplate_t & fqt)
+SketchPair SketchPair::GeneratePairedSketch(const Sketcher & sketcher, const FastqTemplate_t & fqt)
 {
 #ifndef NDEBUG
     if(fqt.segVec.size() == 0) {
@@ -118,7 +118,7 @@ SketchPair SketchHashFactory::GeneratePairedSketch(const Sketcher & sketcher, co
 SketchPair SketchHashFactory::GeneratePairedSketchWithQual(const FastqTemplate_t & fqt)
     const
 {
-    SketchPair sp = GeneratePairedSketch(sketcher_,fqt);
+    SketchPair sp = SketchPair::GeneratePairedSketch(sketcher_,fqt);
     sp.meanQuality = CalculateMeanQuality(fqt);
     return sp;
 }

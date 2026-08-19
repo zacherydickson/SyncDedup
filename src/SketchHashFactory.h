@@ -19,6 +19,8 @@ struct SketchPair {
     Sketch first;
     Sketch second;
     double meanQuality;
+    static SketchPair GeneratePairedSketch( const Sketcher & sketcher,
+                                            const FastqTemplate_t & fqt);
 };
 
 struct HashedFastqSet {
@@ -39,8 +41,6 @@ class SketchHashFactory {
                         int phredOffset = SketchHashFactory::DefaultPhredOffset);
     
     size_t FillHashedFastqSet(FastqTemplateSource & src, HashedFastqSet & hfqSet);
-    static SketchPair GeneratePairedSketch( const Sketcher & sketcher,
-                                            const FastqTemplate_t & fqt);
     SketchPair GeneratePairedSketchWithQual(const FastqTemplate_t & fqt) const ;
     double CalculateMeanQuality(const FastqTemplate_t & fqt) const ;
     static const int DefaultPhredOffset = 33;

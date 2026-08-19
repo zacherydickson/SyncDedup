@@ -132,7 +132,7 @@ SCENARIO("Paired Sketches are generated correctly","[SketchHashFactory]") {
         INFO("and Given: bPaired is " << bPaired);
         FastqTemplate_t & input = (bPaired) ? initFqt1pair : initFqt1fwd;
         WHEN("static GeneratePairedSketch() is called") {
-            SketchPair sp = SketchHashFactory::GeneratePairedSketch(sketcher,input);
+            SketchPair sp = SketchPair::GeneratePairedSketch(sketcher,input);
             THEN("The sketches match what an sketcher would generate alone") {
                 REQUIRE( sp.first == fwdSk );
                 if(bPaired) {

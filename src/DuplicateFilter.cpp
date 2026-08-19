@@ -178,7 +178,7 @@ bool DuplicateFilter::operator()(   const Sketcher & sketcher,
     TemplateSummary_t fqtSummary{ fqt.meanQual, fqt.length(), fqtIdx };
     //Find candidate matches for the template
     CandidateDuplicateFinder cdf{   fqtIdx, bool(fqt.segVec.size() > 1),
-                                    SketchHashFactory::GeneratePairedSketch(sketcher,fqt) };
+                                    SketchPair::GeneratePairedSketch(sketcher,fqt) };
     //Cannot determine dup status for an unsketchable sequence
     if(cdf.sp.first.size() + cdf.sp.second.size() <= 0) {
         return true;
