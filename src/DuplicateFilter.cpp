@@ -110,7 +110,7 @@ bool IndelFilter::operator()(   const FastqTemplate_t & fqt,
         if(i0 >= offVec.size()) { continue; }
         size_t lastOffset = offVec[i0];
         size_t indelCount = 0;
-        size_t zeroOffCount = 0;
+        size_t zeroOffCount = (lastOffset == 0) ? 1 : 0;
         for(size_t i = i0+1; i < offVec.size(); i++){
             size_t off = offVec[i];
             if(off == std::numeric_limits<int>::max()) { continue; } //Skip unmatched sketches
