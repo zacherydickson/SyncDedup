@@ -7,7 +7,7 @@ namespace DuplicateFilter {
 // TEMPLATE SUMMARY
 
 bool TemplateSummary_t::operator<(const TemplateSummary_t & other) const {
-    if(meanQual != other.meanQual) {
+    if(std::abs(meanQual - other.meanQual) > TemplateSummary_t::QualTolerance) {
         return meanQual < other.meanQual; 
     }
     if(length != other.length) {
