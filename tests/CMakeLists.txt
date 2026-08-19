@@ -77,6 +77,19 @@ target_link_libraries(TestSketchHashFactory
         Catch2Extensions
 )
 
+add_executable(TestDuplicateFilter)
+target_sources(TestDuplicateFilter
+    PRIVATE
+        testDuplicateFilter.cpp
+)
+target_compile_features(TestDuplicateFilter PRIVATE cxx_std_17)
+target_link_libraries(TestDuplicateFilter
+    PRIVATE 
+        DuplicateFilter 
+        Catch2::Catch2WithMain
+        Catch2Extensions
+)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(TestSketcher)

@@ -15,7 +15,6 @@ struct TemplateSummary_t {
     const size_t length;
     const size_t idx;
     static constexpr double QualTolerance = 0.01;
-        //TODO: ADD Tests
     bool operator<(const TemplateSummary_t & other) const;
 };
 
