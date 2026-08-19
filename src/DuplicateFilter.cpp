@@ -105,10 +105,13 @@ bool IndelFilter::operator()(   const FastqTemplate_t & fqt,
         const std::vector<int> & offVec = (parity == 1) ? hc.first : hc.second;
         size_t maxIndels = std::ceil(double(fqt.segVec[parity].seq.length()) * MaxIndelRate);
         size_t count = 0;
-        size_t lastOffset = 0;
+        size_t i0 = 0;
+        while(i0 < offVec.size() && offVec[i0] == std::numeric_limits<int>::max()) { i0++; }
+        if(i0 >= offVec.size()) { continue; }
+        size_t lastOffset = offVec[i0];
         size_t indelCount = 0;
         size_t zeroOffCount = 0;
-        for(size_t i = 0; i < offVec.size(); i++){
+        for(size_t i = i0+1; i < offVec.size(); i++){
             size_t off = offVec[i];
             if(off == std::numeric_limits<int>::max()) { continue; } //Skip unmatched sketches
             count++;
@@ -116,7 +119,6 @@ bool IndelFilter::operator()(   const FastqTemplate_t & fqt,
             if(off == 0) { zeroOffCount++; }
             lastOffset = off;
         }
-        if(lastOffset != 0) { indelCount++; }
         if( !count ) { continue; }
         if( !zeroOffCount ) { return false; } //There are no zero-offset sketches
         if( indelCount >= maxIndels ) { return false; } //There are too many offset swaps
