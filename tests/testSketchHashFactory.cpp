@@ -123,8 +123,27 @@ TEST_CASE("Mean Quality is correctly calculated","[SketchHashFactory]") {
     }
 }
 
-
 SCENARIO("Paired Sketches are generated correctly","[SketchHashFactory]") {
+    GIVEN("A sketcher and input") {
+        Sketcher sketcher(7,5,1);
+        Sketch fwdSk = sketcher.generate_sketch(initFqt1fwd.segVec[0].seq);
+        Sketch revSk = sketcher.generate_sketch(initFqt1rev.segVec[0].seq);
+        bool bPaired = GENERATE(true,false);
+        INFO("and Given: bPaired is " << bPaired);
+        FastqTemplate_t & input = (bPaired) ? initFqt1pair : initFqt1fwd;
+        WHEN("static GeneratePairedSketch() is called") {
+            SketchPair sp = SketchHashFactory::GeneratePairedSketch(sketcher,input);
+            THEN("The sketches match what an sketcher would generate alone") {
+                REQUIRE( sp.first == fwdSk );
+                if(bPaired) {
+                    REQUIRE( sp.second == revSk );
+                }
+            }
+        }
+    }
+}
+
+SCENARIO("Paired Sketches with quality are generated correctly","[SketchHashFactory]") {
     Sketcher externalSketcher(7,5,1);
     Sketch fwdSk = externalSketcher.generate_sketch(initFqt1fwd.segVec[0].seq);
     Sketch revSk = externalSketcher.generate_sketch(initFqt1rev.segVec[0].seq);
