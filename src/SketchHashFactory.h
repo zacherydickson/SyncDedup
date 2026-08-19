@@ -12,6 +12,7 @@
 struct ExtendedFastqTemplate_t : public FastqTemplate_t {
     ExtendedFastqTemplate_t() : FastqTemplate_t() {}
     ExtendedFastqTemplate_t(const FastqTemplate_t & fqt) : FastqTemplate_t(fqt) {}
+    //TODO: Idea Move Mean Quality Calc here?
     double meanQual = 0.0;
 };
 
@@ -25,6 +26,9 @@ struct SketchPair {
 
 struct HashedFastqSet {
     LocalSyncmerMap sketchMap;
+//TODO: Idea, have this be an "IndexibleFastqTemplateSource" to allow for
+//easier flipping between high mem (load it all) and low mem (store in
+//indexed file) modes
     std::deque<ExtendedFastqTemplate_t> templates;
     void insert(const SketchPair& sp, const FastqTemplate_t & fqt);
     void add_sketch(size_t idx, const SketchPair & sp);
