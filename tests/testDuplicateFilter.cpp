@@ -82,6 +82,7 @@ bool PairedExpectedPass(double maxRate, std::pair<double,double> ratePair, bool 
 
 
 // ############## TESTS ####################3
+// ### TemplateSummary_t
 
 SCENARIO ("Template Summaries correctly compare less than",
         "[TemplateSummary_t][Unit]")
@@ -90,9 +91,9 @@ SCENARIO ("Template Summaries correctly compare less than",
     double qualAdj = GENERATE(-1.0, 0.0, 1.0);
     INFO("and Given: qualAdj is " << qualAdj);
     int lenAdj = GENERATE(-1, 0, 1);
-    INFO("and Given: lenAdj is " << lenAdj);
+    INFO("and Given: lenAdj is " << lenAdj); 
     int idxAdj = GENERATE(-1, 0, 1);
-    INFO("and Given: idxAdj is " << idxAdj);
+    INFO("and Given: idxAdj is " << idxAdj); 
     bool exp = (idxAdj == -1);
     if(lenAdj == 1) {exp = true;} else if(lenAdj == -1) {exp = false;}
     if(qualAdj < -TemplateSummary_t::QualTolerance) {
@@ -109,6 +110,9 @@ SCENARIO ("Template Summaries correctly compare less than",
         }
     }
 }
+
+
+// ### IndelFilter
 
 SCENARIO ("Indel filtration on known cases", "[IndelFilter][Unit]") {
     GIVEN("An indel filter") {
@@ -150,6 +154,8 @@ SCENARIO ("Indel filtration on known cases", "[IndelFilter][Unit]") {
     }
 }
 
+
+
 TEST_CASE ("Specific Indel Case","[.SpecIndelCase]") {
     double maxIndelRate = 0.1970667069006693;
     size_t seqLen = 111;
@@ -172,11 +178,11 @@ TEST_CASE ("Specific Indel Case","[.SpecIndelCase]") {
 SCENARIO ("Indel issue Discovery", "[IndelFilter][.Discovery]") {
     GIVEN("An indel filter") {
         double maxIndelRate = GENERATE(take(10,random(0.0,1.0)));
+        size_t seqLen = GENERATE(take(10,random(1,1000)));
+        CAPTURE(seqLen);
         CAPTURE(maxIndelRate);
         IndelFilter indelFilter{maxIndelRate};
         AND_GIVEN("A template") {
-            size_t seqLen = GENERATE(take(10,random(1,1000)));
-            CAPTURE(seqLen);
             bool bPaired = GENERATE(true,false);
             CAPTURE(bPaired);
             FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen,
@@ -200,3 +206,34 @@ SCENARIO ("Indel issue Discovery", "[IndelFilter][.Discovery]") {
         }
     }
 }
+
+
+// ### SubstitutionFilter
+
+SCENARIO("Substitution filtering on known cases","[SubtitutionFilter][Unit]") {
+    //TODO
+}
+
+
+TEST_CASE("Specific Substitution filtering Case","[SubtitutionFilter][.SpecSubsCase]") {
+    //TODO
+}
+
+SCENARIO("Substitution filtering issue Discovery","[SubtitutionFilter][.Discovery]") {
+    //TODO
+}
+
+
+// ### CandidateDuplicateFinder
+
+//TODO
+
+// ### DuplicateFilter
+
+
+//TODO
+
+
+
+
+
