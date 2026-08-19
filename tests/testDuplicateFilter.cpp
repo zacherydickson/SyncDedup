@@ -2,46 +2,105 @@
 #include <Catch2Extensions.hpp>
 #include <DuplicateFilter.h>
 
-using namespace DuplicateFilter;
+using namespace DuplicateFilterNS;
 
 
-////Constructs a Hit candidate where the offset vectors are in the form:
-//// 0, 1, 2 ..., nIndel, 0, 0, 0, ...
-//// The total length is 2x the number of Indels
-//// The number of indels is the closest integer to the rate * the number of indel slots
-//// in a sequence (seqlength - 1)
-////The length may be longer than a possible sketch for the template
-////Input - A reference to a hit candidate in which to store the result
-////      - a const reference to an fqt template to inform pairing/ sequence lengths
-////      - a double target Indel rate for the first segment
-////      - a double target Indel rate for the second segment (defaults to 0)
-////Output - A pair of doubles for the actual indel rates in the constructed hit candidate
-std::pair<double,double> ConstructIndelHC(  HitCandidate & hc,
-                                            const FastqTemplate_t fqt,
-                                            double targetIndelRate,
-                                            double targetIndelRate2=0)
+//std::pair<double,double> ConstructIndelHC(  HitCandidate & hc,
+//                                            const FastqTemplate_t & fqt,
+//                                            double targetIndelRate,
+//                                            double targetIndelRate2=0)
+//{
+//    size_t minSize = 10;
+//    size_t nIndel = std::round((fqt.segVec[0].seq.length()-1) * targetIndelRate);
+//    size_t length = 2 * nIndel;
+//    if(length < minSize) { length = minSize; }
+//    hc.first = std::vector<int>(length,int(0));
+//    for(size_t i = 0; i < nIndel; i++) {
+//        hc.first[i] += i+1;
+//    }
+//    //for(auto x : hc.first) {
+//    //    std::cerr << x << "\t";
+//    //}
+//    //std::cerr << "\n";
+//    std::pair<double,double> actualRatePair;
+//    actualRatePair.first = nIndel / double((fqt.segVec[0].seq.length()-1));
+//    if(fqt.segVec.size() > 1) {
+//        HitCandidate tmphc;
+//        FastqTemplate_t tmpFqt(fqt);
+//        FastqSegment_t seg= fqt.segVec[1];
+//        tmpFqt.segVec.clear();
+//        tmpFqt.segVec.push_back(seg);
+//        auto rp = ConstructIndelHC(tmphc,tmpFqt,targetIndelRate2);
+//        actualRatePair.second = rp.first;
+//        hc.second = tmphc.first;
+//    }
+//    return actualRatePair;
+//}
+
+struct OffsetConstructor {
+    static const size_t minSize = 10;
+    virtual double operator()(std::vector<int> & offVec, size_t denom, double rate) const = 0;
+};
+
+//Constructs a Hit candidate where the offset vectors are in the form:
+// 0, 1, 2 ..., nIndel, 0, 0, 0, ...
+// The number of indels is the closest integer to the rate * the number of indel slots
+// in a sequence (seqlength - 1)
+//The length may be longer than a possible given denom
+struct IndelOffsetConstructor : public OffsetConstructor
 {
-    size_t minSize = 10;
-    size_t nIndel = std::round((fqt.segVec[0].seq.length()-1) * targetIndelRate);
-    size_t length = 2 * nIndel;
-    if(length < minSize) { length = minSize; }
-    hc.first = std::vector<int>(length,int(0));
-    for(size_t i = 0; i < nIndel; i++) {
-        hc.first[i] += i+1;
+    static const size_t lengthMult = 2;
+    double operator()(std::vector<int> & offVec, size_t denom, double rate) const override
+    {
+        size_t nIndel = std::round(denom * rate);
+        size_t length = lengthMult * nIndel;
+        if(length < minSize) { length = minSize; }
+        offVec = std::vector<int>(length,int(0));
+        for(size_t i = 0; i < nIndel; i++) {
+            offVec[i] += i+1;
+        }
+        return nIndel / double(denom);
     }
+};
+
+struct SubsOffsetConstructor : public OffsetConstructor
+{
+    const Sketcher * sketcher_ptr;
+    const SketchPair * sp_ptr;
+    double operator()(std::vector<int> & offVec, size_t denom, double rate) const override
+    {
+        //TODO
+        return 0.0;
+    }
+};
+
+
+//Input - A reference to a hit candidate in which to store the result
+//      - a const reference to an fqt template to inform pairing/ sequence lengths
+//      - an OffsetConstructor object defining how to construct each offset vector
+//      - a double target Indel rate for the first segment
+//      - a double target Indel rate for the second segment (defaults to 0)
+//Output - A pair of doubles for the actual indel rates in the constructed hit candidate
+std::pair<double,double> ConstructHC(   HitCandidate & hc,
+                                        const FastqTemplate_t & fqt,
+                                        const OffsetConstructor & offConst, 
+                                        double rate,
+                                        double rate2=0)
+{
+    std::pair<double,double> actualRatePair;
+    actualRatePair.first = offConst(hc.first,fqt.segVec[0].seq.length()-1,rate);
+    
     //for(auto x : hc.first) {
     //    std::cerr << x << "\t";
     //}
     //std::cerr << "\n";
-    std::pair<double,double> actualRatePair;
-    actualRatePair.first = nIndel / double((fqt.segVec[0].seq.length()-1));
     if(fqt.segVec.size() > 1) {
         HitCandidate tmphc;
         FastqTemplate_t tmpFqt(fqt);
         FastqSegment_t seg= fqt.segVec[1];
         tmpFqt.segVec.clear();
         tmpFqt.segVec.push_back(seg);
-        auto rp = ConstructIndelHC(tmphc,tmpFqt,targetIndelRate2);
+        auto rp = ConstructHC(tmphc,tmpFqt,offConst,rate2);
         actualRatePair.second = rp.first;
         hc.second = tmphc.first;
     }
@@ -117,7 +176,7 @@ SCENARIO ("Template Summaries correctly compare less than",
 SCENARIO ("Indel filtration on known cases", "[IndelFilter][Unit]") {
     GIVEN("An indel filter") {
         double maxIndelRate = GENERATE(0, 0.5, 1.0,
-                DuplicateFilter::DuplicateFilter::DefaultIndelRate  );
+                DuplicateFilter::DefaultIndelRate  );
         CAPTURE(maxIndelRate);
         IndelFilter indelFilter{maxIndelRate};
         AND_GIVEN("A template") {
@@ -137,7 +196,8 @@ SCENARIO ("Indel filtration on known cases", "[IndelFilter][Unit]") {
                 INFO("and Given: targetIndelRates are " <<
                         targetIndelRate1 << ", " << targetIndelRate2);
                 HitCandidate hc;
-                auto ratePair = ConstructIndelHC(hc,fqt,targetIndelRate1,
+                IndelOffsetConstructor ioc;
+                auto ratePair = ConstructHC(hc,fqt,ioc,targetIndelRate1,
                                                     targetIndelRate2);
                 INFO("and Given: indelRates are " << ratePair.first <<
                         (bPaired ? ", " + std::to_string(ratePair.second) : "" ));
@@ -160,13 +220,15 @@ TEST_CASE ("Specific Indel Case","[.SpecIndelCase]") {
     double maxIndelRate = 0.1970667069006693;
     size_t seqLen = 111;
     bool bPaired = true;
-    double targetIndelRate = 0.20381634913327029;
-    CAPTURE( maxIndelRate, seqLen, bPaired, targetIndelRate );
+    double targetIndelRate1 = 0.20381634913327029;
+    double targetIndelRate2 = 0.20381634913327029;
+    CAPTURE( maxIndelRate, seqLen, bPaired, targetIndelRate1, targetIndelRate2 );
     IndelFilter indelFilter{maxIndelRate};
     FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen,
                                         bPaired ? seqLen : 0);
     HitCandidate hc;
-    auto ratePair = ConstructIndelHC(hc,fqt,targetIndelRate,targetIndelRate);
+    IndelOffsetConstructor ioc;
+    auto ratePair = ConstructHC(hc,fqt,ioc,targetIndelRate1,targetIndelRate2);
     INFO("and Given: indelRates are " << ratePair.first <<
             (bPaired ? ", " + std::to_string(ratePair.second) : "" ));
     bool expected = PairedExpectedPass( maxIndelRate, ratePair,
@@ -188,10 +250,18 @@ SCENARIO ("Indel issue Discovery", "[IndelFilter][.Discovery]") {
             FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen,
                                                 bPaired ? seqLen : 0);
             AND_GIVEN("A hit candidate"){
-                double targetIndelRate = GENERATE(take(10,random(0.0,1.0)));
-                CAPTURE(targetIndelRate);
+                double targetIndelRate1 = GENERATE(take(10,random(0.0,1.0)));
+                double targetIndelRate2 = GENERATE(take(10,random(0.0,1.0)));
+                bool bDiffRate = GENERATE(true,false);
+                if(!bPaired){
+                    targetIndelRate2 = 0;
+                } else if(!bDiffRate) {
+                    targetIndelRate2 = targetIndelRate1;
+                }
+                CAPTURE(bDiffRate,targetIndelRate1,targetIndelRate2);
+                IndelOffsetConstructor ioc;
                 HitCandidate hc;
-                auto ratePair = ConstructIndelHC(hc,fqt,targetIndelRate,targetIndelRate);
+                auto ratePair = ConstructHC(hc,fqt,ioc,targetIndelRate1,targetIndelRate2);
                 INFO("and Given: indelRates are " << ratePair.first <<
                         (bPaired ? ", " + std::to_string(ratePair.second) : "" ));
                 bool expected = PairedExpectedPass( maxIndelRate, ratePair,
