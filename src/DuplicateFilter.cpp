@@ -2,7 +2,7 @@
 #include <cmath>
 #include <limits>
 
-namespace DuplicateFilter {
+namespace DuplicateFilterNS {
 
 // TEMPLATE SUMMARY
 

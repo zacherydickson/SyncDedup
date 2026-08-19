@@ -5,7 +5,7 @@
 #include <SketchHashFactory.h>
 #include <unordered_map>
 
-namespace DuplicateFilter {
+namespace DuplicateFilterNS {
 
 typedef std::pair<std::vector<int>,std::vector<int>> HitCandidate;
 typedef std::unordered_map<size_t,HitCandidate> HitCandidateMap;
