@@ -103,7 +103,7 @@ bool IndelFilter::operator()(   const FastqTemplate_t & fqt,
     bool bPaired = fqt.segVec.size() > 1;
     for(uint8_t parity = 0; parity < (bPaired ? 2 : 1); parity++) {
         const std::vector<int> & offVec = (parity == 1) ? hc.first : hc.second;
-        size_t maxIndels = std::ceil(double(fqt.segVec[parity].seq.length()) * MaxIndelRate);
+        size_t maxIndels = std::ceil(double(fqt.segVec[parity].seq.length()-1) * MaxIndelRate);
         size_t count = 0;
         size_t i0 = 0;
         while(i0 < offVec.size() && offVec[i0] == std::numeric_limits<int>::max()) { i0++; }
