@@ -39,7 +39,7 @@ struct SubstitutionFilter {
     double MaxSubRate;
     //True if the input passes the filter, false otherwise
         //TODO: ADD Tests
-    bool operator()(const Sketcher & sketcher, const FastqTemplate_t & fqt,
+    bool operator()(size_t k, const FastqTemplate_t & fqt,
                     const SketchPair & sp, const HitCandidate & hc) const ;
 };
 

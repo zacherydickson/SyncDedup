@@ -129,18 +129,19 @@ bool IndelFilter::operator()(   const FastqTemplate_t & fqt,
 
 // SUBSTITUTION FILTER
 
-bool SubstitutionFilter::operator()(const Sketcher & sketcher,
+//Note: One can feed an empty Sketch in and it will pass
+//  The assumption is that this filter is used things which have sketches
+bool SubstitutionFilter::operator()(size_t k,
                                     const FastqTemplate_t & fqt,
                                     const SketchPair & sp,
                                     const HitCandidate & hc) const
 {
     using MMInterval = std::pair<size_t,size_t>;
-    size_t k = sketcher.k();
     bool bPaired = fqt.segVec.size() > 1;
-    std::vector<MMInterval> mmIntervals;
     for(uint8_t parity = 0; parity < (bPaired ? 2 : 1); parity++) {
+        std::vector<MMInterval> mmIntervals;
         const Sketch & sketch = (parity == 0) ? sp.first : sp.second;
-        const std::vector<int> & offVec = (parity == 1) ? hc.first : hc.second;
+        const std::vector<int> & offVec = (parity == 0) ? hc.first : hc.second;
         size_t maxSubs = std::ceil(double(fqt.segVec[parity].seq.length()) * MaxSubRate);
         //Collect the unique intervals which must contain at least one substitution
         for(size_t i = 0; i < sketch.size(); i++){
@@ -161,6 +162,7 @@ bool SubstitutionFilter::operator()(const Sketcher & sketcher,
             }
         }
         size_t nMinSub = mmIntervals.size();
+        //std::cerr << "\tminSubs: "<< nMinSub <<" vs maxSubs: "<<maxSubs<<"\n";
         if(nMinSub > maxSubs) { return false; }
     }
     return true;
@@ -191,7 +193,7 @@ bool DuplicateFilter::operator()(   const Sketcher & sketcher,
     //  Indels must be handled first, as the assumption for the sub filter
     //  is that all positions correspond
     for(const auto & pair : candMap) {
-        if(indelFilter_(fqt,pair.second) && subsFilter_(sketcher,fqt,cdf.sp,pair.second)) {
+        if(indelFilter_(fqt,pair.second) && subsFilter_(sketcher.k(),fqt,cdf.sp,pair.second)) {
             const ExtendedFastqTemplate_t & hitFqt = hfqSet.templates[pair.first];
             TemplateSummary_t hitSummary{hitFqt.meanQual,hitFqt.length(),pair.first};
             if(fqtSummary < hitSummary) { return false; }
