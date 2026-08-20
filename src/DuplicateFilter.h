@@ -23,13 +23,12 @@ struct CandidateDuplicateFinder {
     bool bPaired;
     SketchPair sp;
         //TODO: ADD Tests
-    HitCandidateMap operator()(const HashedFastqSet & hfqSet ) const ;
+    HitCandidateMap operator()(const LocalSyncmerMap & sketchMap ) const ;
 };
 
 struct IndelFilter {
     double MaxIndelRate;
     //True if the input passes the filter, false otherwise
-        //TODO: ADD Tests
     bool operator()(const FastqTemplate_t & fqt,
                     const HitCandidate & hc) const ;
 };
@@ -38,7 +37,6 @@ struct IndelFilter {
 struct SubstitutionFilter {
     double MaxSubRate;
     //True if the input passes the filter, false otherwise
-        //TODO: ADD Tests
     bool operator()(size_t k, const FastqTemplate_t & fqt,
                     const SketchPair & sp, const HitCandidate & hc) const ;
 };

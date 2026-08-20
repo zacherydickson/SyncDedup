@@ -19,14 +19,14 @@ bool TemplateSummary_t::operator<(const TemplateSummary_t & other) const {
 // CANDIDATE DUPLICATE FINDER
 
 HitCandidateMap CandidateDuplicateFinder::operator()(
-        const HashedFastqSet & hfqSet ) const
+        const LocalSyncmerMap & sketchMap ) const
 {
     HitCandidateMap candMap;
     HitCandidate defaultHitCand = { std::vector<int>(
                                         sp.first.size(),
                                         std::numeric_limits<int>::max() ),
                                     std::vector<int>(
-                                        (bPaired ? sp.first.size() : 0),
+                                        (bPaired ? sp.second.size() : 0),
                                         std::numeric_limits<int>::max() ) };
     for(uint8_t parity = 0; parity <= (bPaired ? 1 : 0); parity++){
         const Sketch & sketch = (parity == 0) ? sp.first : sp.second;
@@ -43,7 +43,7 @@ HitCandidateMap CandidateDuplicateFinder::operator()(
             //Track all positions within a particular template the syncmer occured
             std::unordered_map<size_t,std::vector<size_t>> posMap;
             //Find the non-self hits and determine the current SE of interest position
-            for(const LocationElement & le : hfqSet.sketchMap.at(se)) {
+            for(const LocationElement & le : sketchMap.at(se)) {
                 //Skip hits with different parity
                 if( HashedFastqSet::skparity(le.id) != parity ) { continue; }
                 //Determine the location of sketch in the current template of interest
