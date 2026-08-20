@@ -5,38 +5,6 @@
 using namespace DuplicateFilterNS;
 
 
-//std::pair<double,double> ConstructIndelHC(  HitCandidate & hc,
-//                                            const FastqTemplate_t & fqt,
-//                                            double targetIndelRate,
-//                                            double targetIndelRate2=0)
-//{
-//    size_t minSize = 10;
-//    size_t nIndel = std::round((fqt.segVec[0].seq.length()-1) * targetIndelRate);
-//    size_t length = 2 * nIndel;
-//    if(length < minSize) { length = minSize; }
-//    hc.first = std::vector<int>(length,int(0));
-//    for(size_t i = 0; i < nIndel; i++) {
-//        hc.first[i] += i+1;
-//    }
-//    //for(auto x : hc.first) {
-//    //    std::cerr << x << "\t";
-//    //}
-//    //std::cerr << "\n";
-//    std::pair<double,double> actualRatePair;
-//    actualRatePair.first = nIndel / double((fqt.segVec[0].seq.length()-1));
-//    if(fqt.segVec.size() > 1) {
-//        HitCandidate tmphc;
-//        FastqTemplate_t tmpFqt(fqt);
-//        FastqSegment_t seg= fqt.segVec[1];
-//        tmpFqt.segVec.clear();
-//        tmpFqt.segVec.push_back(seg);
-//        auto rp = ConstructIndelHC(tmphc,tmpFqt,targetIndelRate2);
-//        actualRatePair.second = rp.first;
-//        hc.second = tmphc.first;
-//    }
-//    return actualRatePair;
-//}
-
 struct OffsetConstructor {
     static const size_t minSize = 10;
     virtual double operator()(std::vector<int> & offVec, size_t denom, double rate) const = 0;
@@ -112,7 +80,7 @@ FastqTemplate_t ConstructFQT(std::string name, size_t length, size_t length2 = 0
     fqt.name = name;
     fqt.segVec.push_back({std::string(length,'A'),"",std::string(length,'I')});
     if(length2) {
-        fqt.segVec.push_back({std::string(length,'C'),"",std::string(length,'F')});
+        fqt.segVec.push_back({std::string(length2,'C'),"",std::string(length2,'F')});
     }
     return fqt;
 }
@@ -227,7 +195,7 @@ TEST_CASE ("Specific Indel Case","[.SpecIndelCase]") {
     bool bPaired = true;
     double targetIndelRate1 = 0.17560484551515509;
     double targetIndelRate2 = 0.43799889436149331;
-    CAPTURE( maxIndelRate, seqLen1,seqLen2, bPaired, targetIndelRate1, targetIndelRate2 );
+    CAPTURE( maxIndelRate, seqLen1, seqLen2, bPaired, targetIndelRate1, targetIndelRate2 );
     IndelFilter indelFilter{maxIndelRate};
     FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen1,
                                         bPaired ? seqLen2 : 0);
