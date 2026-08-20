@@ -1,13 +1,14 @@
 #include <catch2/catch_all.hpp>
 #include <Catch2Extensions.hpp>
 #include <DuplicateFilter.h>
+#include <limits>
 
 using namespace DuplicateFilterNS;
 
 
 struct OffsetConstructor {
-    static const size_t minSize = 10;
-    virtual double operator()(std::vector<int> & offVec, size_t denom, double rate) const = 0;
+    static const size_t lengthMult = 2;
+    virtual double operator()(std::vector<int> & offVec, size_t length, double rate) const = 0;
 };
 
 //Constructs a Hit candidate where the offset vectors are in the form:
@@ -17,13 +18,14 @@ struct OffsetConstructor {
 //The length may be longer than a possible given denom
 struct IndelOffsetConstructor : public OffsetConstructor
 {
-    static const size_t lengthMult = 2;
-    double operator()(std::vector<int> & offVec, size_t denom, double rate) const override
+    static const size_t minSize = 10;
+    double operator()(std::vector<int> & offVec, size_t length, double rate) const override
     {
+        size_t denom = (length) ? length-1 : 0;
         size_t nIndel = std::round(denom * rate);
-        size_t length = lengthMult * nIndel;
-        if(length < minSize) { length = minSize; }
-        offVec = std::vector<int>(length,int(0));
+        size_t outlength = lengthMult * nIndel;
+        if(outlength < minSize) { outlength = minSize; }
+        offVec = std::vector<int>(outlength,int(0));
         for(size_t i = 0; i < nIndel; i++) {
             offVec[i] += i+1;
         }
@@ -31,17 +33,58 @@ struct IndelOffsetConstructor : public OffsetConstructor
     }
 };
 
+//Constructs Offset vectors with length matching a sketch element
+//Substitutions are indicated by maxInt values
+//Substitutions are spaced such that the corresponding sketch elements positions
+//are at least k_ bp apart
+//If the input sketch's elements are all at least k_ bp apart and the sketch is denom length long
+// then any proportion of subtitution rates is possible
+//Otherwise the rate is capped at
 struct SubsOffsetConstructor : public OffsetConstructor
 {
-    const Sketcher * sketcher_ptr;
-    const SketchPair * sp_ptr;
-    double operator()(std::vector<int> & offVec, size_t denom, double rate) const override
+    SubsOffsetConstructor() = delete;
+    SubsOffsetConstructor(size_t k):
+        k_(k) {}
+    size_t k_;
+    static size_t calcNSub(size_t denom,double rate) {
+        return std::round(denom * rate);
+    }
+    double operator()(std::vector<int> & offVec, size_t length, double rate) const override
     {
-        //TODO
-        return 0.0;
+        size_t denom = length;
+        size_t nSub = calcNSub(denom,rate);
+        //size_t length = nSub;
+        offVec = std::vector<int>(nSub,std::numeric_limits<int>::max());
+        //size_t sketchIdx = 0;
+        //size_t actualSubs = 0;
+        //for(size_t i = 0; i < nSub && sketchIdx < length; i++){
+        //    offVec[sketchIdx] = std::numeric_limits<int>::max();
+        //    actualSubs++;
+        //    size_t pos = sketch_ptr_->at(sketchIdx).position;
+        //    while(++sketchIdx < length && sketch_ptr_->at(sketchIdx).position < pos + k_){}
+        //}
+        return nSub / double(denom);
+    }
+    Sketch idealizedSketch(size_t denom, double rate) {
+        size_t nSub = calcNSub(denom,rate);
+        Sketch sketch;
+        for(size_t i = 0; i < nSub; i++){
+            SketchElement se; 
+            se.hash = i;
+            se.position = i*k_;
+            sketch.push_back(se);
+        }
+        return sketch;
+    }
+    SketchPair idealizedSketchPair(std::pair<size_t,size_t> denomPair, std::pair<double,double> ratePair, bool bPaired) {
+        SketchPair sp;
+        sp.first = idealizedSketch(denomPair.first,ratePair.first);
+        if(bPaired) {
+            sp.second = idealizedSketch(denomPair.second,ratePair.second);
+        }
+        return sp;
     }
 };
-
 
 //Input - A reference to a hit candidate in which to store the result
 //      - a const reference to an fqt template to inform pairing/ sequence lengths
@@ -56,7 +99,7 @@ std::pair<double,double> ConstructHC(   HitCandidate & hc,
                                         double rate2=0)
 {
     std::pair<double,double> actualRatePair;
-    actualRatePair.first = offConst(hc.first,fqt.segVec[0].seq.length()-1,rate);
+    actualRatePair.first = offConst(hc.first,fqt.segVec[0].seq.length(),rate);
     
     //for(auto x : hc.first) {
     //    std::cerr << x << "\t";
@@ -187,8 +230,7 @@ SCENARIO ("Indel filtration on known cases", "[IndelFilter][Unit]") {
 
 
 
-TEST_CASE ("Specific Indel Case","[.SpecIndelCase]") {
-    //TODO: Debug why this case fails
+TEST_CASE ("Specific Indel Case","[IndelFilter][.SpecialCase]") {
     double maxIndelRate = 0.43087373746039748;
     size_t seqLen1 = 182;
     size_t seqLen2 = 155;
@@ -213,16 +255,17 @@ TEST_CASE ("Specific Indel Case","[.SpecIndelCase]") {
 SCENARIO ("Indel issue Discovery", "[IndelFilter][.Discovery]") {
     GIVEN("An indel filter") {
         double maxIndelRate = GENERATE(take(10,random(0.0,1.0)));
-        size_t seqLen1 = GENERATE(take(10,random(1,1000)));
-        size_t seqLen2 = GENERATE(take(10,random(1,1000)));
-        bool bDiffLen = GENERATE(true, false);
-        if(!bDiffLen) {
-            seqLen2 = seqLen1;
-        }
-        CAPTURE(seqLen1,seqLen2);
+        
         CAPTURE(maxIndelRate);
         IndelFilter indelFilter{maxIndelRate};
         AND_GIVEN("A template") {
+            size_t seqLen1 = GENERATE(take(10,random(1,1000)));
+            size_t seqLen2 = GENERATE(take(10,random(1,1000)));
+            bool bDiffLen = GENERATE(true, false);
+            if(!bDiffLen) {
+                seqLen2 = seqLen1;
+            }
+            CAPTURE(seqLen1,seqLen2);
             bool bPaired = GENERATE(true,false);
             CAPTURE(bPaired);
             FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen1,
@@ -258,17 +301,131 @@ SCENARIO ("Indel issue Discovery", "[IndelFilter][.Discovery]") {
 
 // ### SubstitutionFilter
 
-SCENARIO("Substitution filtering on known cases","[SubtitutionFilter][Unit]") {
-    //TODO
+SCENARIO("Substitution filtering on known cases","[SubstitutionFilter][Unit]") {
+   GIVEN("An indel filter") {
+        double maxSubsRate = GENERATE(0, 0.5, 1.0,
+                DuplicateFilter::DefaultSubstitutionRate  );
+        CAPTURE(maxSubsRate);
+        SubstitutionFilter subsFilter{maxSubsRate};
+        AND_GIVEN("A template") {
+            size_t seqLen1 = GENERATE(150);
+            size_t seqLen2 = GENERATE(100);
+            bool bDiffLen = GENERATE(true,false);
+            if(!bDiffLen) { seqLen2 = seqLen1; }
+            CAPTURE(seqLen1,seqLen2);
+            bool bPaired = GENERATE(true,false);
+            CAPTURE(bPaired);
+            FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen1,
+                                                bPaired ? seqLen2 : 0);
+            AND_GIVEN("A hit candidate and idealized sketchPair"){
+                double logitEpsilon1 = GENERATE(-1.0,0.0,1.0);
+                double logitEpsilon2 = GENERATE(-1.0,0.0,1.0);
+                CAPTURE(logitEpsilon1,logitEpsilon2);
+                double targetSubsRate1 = AdjustRate(maxSubsRate,logitEpsilon1);
+                double targetSubsRate2 = AdjustRate(maxSubsRate,logitEpsilon2);
+                if(!bPaired) {targetSubsRate2 = 0; }
+                INFO("and Given: targetSubsRates are " <<
+                        targetSubsRate1 << ", " << targetSubsRate2);
+                size_t k = GENERATE(17);
+                CAPTURE(k);
+                SubsOffsetConstructor soc(k);
+                SketchPair sp = soc.idealizedSketchPair(
+                        {seqLen1,seqLen2}, {targetSubsRate1,targetSubsRate2},
+                        bPaired);
+                HitCandidate hc;
+                auto ratePair = ConstructHC(hc,fqt,soc,targetSubsRate1,
+                                                    targetSubsRate2);
+                INFO("and Given: indelRates are " << ratePair.first <<
+                        (bPaired ? ", " + std::to_string(ratePair.second) : "" ));
+                bool expected = PairedExpectedPass( maxSubsRate, ratePair,
+                                                    bPaired, {seqLen1,seqLen2});
+                WHEN("The filter is called") {
+                    bool bRes = subsFilter(k,fqt,sp,hc);
+                    THEN( "The result matches expectation" ) {
+                            REQUIRE( bRes == expected );
+                    }
+                }
+            }
+        }
+    }
 }
 
 
-TEST_CASE("Specific Substitution filtering Case","[SubtitutionFilter][.SpecSubsCase]") {
-    //TODO
+TEST_CASE("Specific Substitution filtering Case","[SubstitutionFilter][.SpecialCase]") {
+    size_t k = 16;
+    double maxSubsRate = 0.35743931412539642;
+    size_t seqLen1 = 711;
+    size_t seqLen2 = 711;
+    bool bPaired = false;
+    double targetSubsRate1 = 0.35817472859355326;
+    double targetSubsRate2 = 0.0;
+    CAPTURE( maxSubsRate, seqLen1, seqLen2, bPaired, targetSubsRate1, targetSubsRate2 );
+    SubstitutionFilter subsFilter{maxSubsRate};
+    FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen1,
+                                        bPaired ? seqLen2 : 0);
+    SubsOffsetConstructor soc(k);
+    SketchPair sp = soc.idealizedSketchPair(
+            {seqLen1,seqLen2}, {targetSubsRate1,targetSubsRate2},
+            bPaired);
+    HitCandidate hc;
+    auto ratePair = ConstructHC(hc,fqt,soc,targetSubsRate1,targetSubsRate2);
+    INFO("and Given: subsRates are " << ratePair.first <<
+            (bPaired ? ", " + std::to_string(ratePair.second) : "" ));
+    bool expected = PairedExpectedPass( maxSubsRate, ratePair,
+                                        bPaired, {seqLen1,seqLen2});
+    bool bRes = subsFilter(k,fqt,sp,hc);
+    REQUIRE( bRes == expected );
+
 }
 
-SCENARIO("Substitution filtering issue Discovery","[SubtitutionFilter][.Discovery]") {
-    //TODO
+SCENARIO("Substitution filtering issue Discovery","[SubstitutionFilter][.Discovery]") {
+    size_t k = GENERATE(take(5,random(13,31)));
+    CAPTURE(k);
+    GIVEN("A substitution filter") {
+        double maxSubsRate = GENERATE(take(5,random(0.0,1.0)));
+        CAPTURE(maxSubsRate);
+        SubstitutionFilter subsFilter{maxSubsRate};
+        AND_GIVEN("A template") {
+            size_t seqLen1 = GENERATE(take(5,random(1,1000)));
+            size_t seqLen2 = GENERATE(take(5,random(1,1000)));
+            bool bDiffLen = GENERATE(true, false);
+            if(!bDiffLen) {
+                seqLen2 = seqLen1;
+            }
+            CAPTURE(seqLen1,seqLen2);
+            bool bPaired = GENERATE(true,false);
+            CAPTURE(bPaired);
+            FastqTemplate_t fqt = ConstructFQT( "mytemplate",seqLen1,
+                                                bPaired ? seqLen2 : 0);
+            AND_GIVEN("SketchPair and A hit candidate"){
+                double targetSubsRate1 = GENERATE(take(5,random(0.0,1.0)));
+                double targetSubsRate2 = GENERATE(take(5,random(0.0,1.0)));
+                bool bDiffRate = GENERATE(true,false);
+                if(!bPaired){
+                    targetSubsRate2 = 0;
+                } else if(!bDiffRate) {
+                    targetSubsRate2 = targetSubsRate1;
+                }
+                CAPTURE(targetSubsRate1,targetSubsRate2);
+                SubsOffsetConstructor soc(k);
+                SketchPair sp = soc.idealizedSketchPair(
+                        {seqLen1,seqLen2}, {targetSubsRate1,targetSubsRate2},
+                        bPaired);
+                HitCandidate hc;
+                auto ratePair = ConstructHC(hc,fqt,soc,targetSubsRate1,targetSubsRate2);
+                INFO("and Given: indelRates are " << ratePair.first <<
+                        (bPaired ? ", " + std::to_string(ratePair.second) : "" ));
+                bool expected = PairedExpectedPass( maxSubsRate, ratePair,
+                                                    bPaired, {seqLen1,seqLen2});
+                WHEN("The filter is called") {
+                    bool bRes = subsFilter(k,fqt,sp,hc);
+                    THEN( "The result matches expectation" ) {
+                            REQUIRE( bRes == expected );
+                    }
+                }
+            }
+        }
+    }
 }
 
 
