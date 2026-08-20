@@ -431,6 +431,18 @@ SCENARIO("Substitution filtering issue Discovery","[SubstitutionFilter][.Discove
 
 // ### CandidateDuplicateFinder
 
+TEST_CASE("CandidateDuplicateFinder correctly finds candidates","[CandidateDuplicateFinder][Unit]") {
+    SketchPair sp1;
+    sp1.first = {{0x01,1},{0x02,2},{0x03,3},{0x01,4},{0x04,5}};
+    sp1.second = {{0x11,1},{0x12,2},{0x13,3},{0x11,4},{0x14,5}};
+    SketchPair sp2;
+    sp2.first = {{0x01,1},{0x02,2},{0x03,3},{0x01,4},{0x24,5}};
+    sp2.second = {{0x21,1},{0x12,2},{0x13,3},{0x11,4},{0x14,5}};
+    GIVEN("A Local SyncmerMap") {
+        //TODO:
+    }
+}
+
 //TODO
 
 // ### DuplicateFilter
