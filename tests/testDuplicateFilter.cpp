@@ -712,8 +712,42 @@ SCENARIO("CandidateDuplicateFinder finds the correct number of hits","[Candidate
     
 // ### DuplicateFilter
 
-
-//TODO
+SCENARIO ("DuplicateFilter Returns expected results","[DuplicateFilter][Unit]") {
+    FastqTemplate_t fqt1 = 
+        {"Read1", { {"ACAGCTGTAGCTATAGCTAGCTA","",std::string(23,'C')} } };
+    FastqTemplate_t fqt1dup = 
+        {"Read1Dup", { {"ACAGCTGTAGCTATAGCTAGCTA","",std::string(23,'B')} } };
+    FastqTemplate_t fqt1plus1off = 
+        {"Read1plus1", { {"CAGCTGTAGCTATAGCTAGCTAA","",std::string(23,'B')} } };
+    FastqTemplate_t fqt1minus1off = 
+        {"Read1minus1", { {"GACAGCTGTAGCTATAGCTAGCT","",std::string(23,'B')} } };
+    FastqTemplate_t fqt2 = 
+        {"Read2", { {"ACGCTACGCCGATGCTACGATCGTAG","",std::string(26,'B')} } };
+    GIVEN("A hashed Fastq Set") {
+        std::shared_ptr<std::vector<FastqTemplate_t>> fqtVec_ptr(
+                new std::vector<FastqTemplate_t>);
+        *fqtVec_ptr = {fqt1,fqt1dup,fqt1plus1off,fqt1minus1off,fqt2};
+        std::vector<bool> notDupVec = {true,false,true,true,true};
+        Sketcher sketcher(13,7,1);
+        SketchHashFactory shFactory(Sketcher(sketcher),0);
+        HashedFastqSet hfqSet;
+        VectorAsFQTSource src(fqtVec_ptr);
+        size_t nInserted = shFactory.FillHashedFastqSet(src,hfqSet);
+        REQUIRE( nInserted == fqtVec_ptr->size() );
+        AND_GIVEN("A default Duplicate Filter") {
+            DuplicateFilter filter;
+            WHEN("The filter is applied") {
+                for(size_t i = 0; i < fqtVec_ptr->size(); i++){
+                    INFO("and Given: fqtName is: " << (*fqtVec_ptr)[i].name);
+                    CHECK( filter(sketcher,i,hfqSet) == notDupVec[i] );
+                }
+            }
+        }
+    }
+    //TODO: Paired Tests
+    //TODO: Indel Tests
+    //TODO: Subs Tests
+}
 
 
 
