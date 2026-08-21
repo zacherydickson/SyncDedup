@@ -513,7 +513,74 @@ SCENARIO("CandidateDuplicateFinder finds the correct number of hits","[Candidate
     size_t soI = 0;
     SketchElement fwdSe = {0x01,1};
     SketchElement revSe = {0x11,1};
+    SketchElement fwdSeRpt = {0x01,5};
+    SketchElement revSeRpt = {0x11,5};
+    SketchElement fwdSeSep = {0x02,7};
+    SketchElement revSeSep = {0x12,7};
     GIVEN("A cdf functor"){
+        bool bPaired = GENERATE(true,false);
+        //The number of hits should not depend on the sketch structure
+        bool bQueryHasRpt = GENERATE(true,false);
+        bool bQueryHasSep = GENERATE(true,false);
+        CAPTURE(bPaired, bQueryHasRpt, bQueryHasSep);
+        CandidateDuplicateFinder cdf;
+        cdf.fqtIdx = soI;
+        cdf.bPaired = bPaired;
+        cdf.sp.first.push_back(fwdSe);
+        if(bPaired) { cdf.sp.second.push_back(revSe); }
+        if(bQueryHasRpt){
+            cdf.sp.first.push_back(fwdSeRpt);
+            if(bPaired) { cdf.sp.second.push_back(revSeRpt); }
+        }
+        if(bQueryHasSep) {
+            cdf.sp.first.push_back(fwdSeSep);
+            if(bPaired) { cdf.sp.second.push_back(revSeSep); }
+        }
+        size_t nHits = GENERATE(0,1,5,10);
+        AND_GIVEN("A local syncmer Map with the SoI and " << nHits << " hits" ) {
+            //The number of hits should not depend on the db structure
+            bool bDbHasRpt = GENERATE(true,false);
+            bool bDbHasSep = GENERATE(true,false);
+            CAPTURE(bDbHasRpt,bDbHasSep);
+            LocalSyncmerMap lsMap;
+            InsertSketchPair( lsMap, soI, cdf.sp.first, cdf.sp.second, bPaired );
+            for(size_t i = 0; i < nHits; i++){
+                Sketch fwd{fwdSe};
+                Sketch rev{revSe};
+                if(bDbHasRpt) {
+                    fwd.push_back(fwdSeRpt);
+                    rev.push_back(revSeRpt);
+                }
+                if(bDbHasSep) {
+                    fwd.push_back(fwdSeSep);
+                    rev.push_back(revSeSep);
+                }
+                InsertSketchPair( lsMap, soI + i + 1, fwd, rev, bPaired );
+            }
+            WHEN("The functor is called") {
+                HitCandidateMap res = cdf(lsMap);
+                size_t nOrig = res.size();
+                THEN("Then "<< nHits <<" hits are found") {
+                    REQUIRE ( nOrig == nHits );
+                    AND_THEN("The indexes of those candidates are correct") {
+                        for(size_t i = 0; i < nHits; i++){
+                            size_t idx = soI + i + 1;
+                            CAPTURE(idx);
+                            REQUIRE ( res.count(idx) > 0 );
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+//We assume that we will not find hits we shouldn't and the number of hits is correct
+// we must only test that the ids and offsets are correct
+SCENARIO("CandidateDuplicateFinder finds the correct number of hits","[CandidateDuplicateFinder][ResCorrect]") {
+    SketchElement fwdSe = {0x01,1};
+    SketchElement revSe = {0x11,2};
+    GIVEN("A one element sketch") {
         bool bPaired = GENERATE(true,false);
         CAPTURE(bPaired);
         CandidateDuplicateFinder cdf;
@@ -521,50 +588,128 @@ SCENARIO("CandidateDuplicateFinder finds the correct number of hits","[Candidate
         cdf.bPaired = bPaired;
         cdf.sp.first.push_back(fwdSe);
         if(bPaired) { cdf.sp.second.push_back(revSe); }
-        size_t nHits = GENERATE(0,1,5,10);
-        AND_GIVEN("A local syncmer Map with the SoI and " << nHits << " hits" ) {
+        int offset = GENERATE(-1,0,1);
+        AND_GIVEN("A local syncmer map with a hit offset by " << offset) {
             LocalSyncmerMap lsMap;
-            InsertSketchPair( lsMap, soI, {fwdSe}, {revSe}, bPaired );
-            for(size_t i = 0; i < nHits; i++){
-                InsertSketchPair( lsMap, soI + i + 1, {fwdSe}, {revSe}, bPaired );
-            }
+            InsertSketchPair(lsMap, cdf.fqtIdx, cdf.sp.first, cdf.sp.second, bPaired);
+            size_t hitIdx = 2;
+            SketchElement fwd = fwdSe; fwd.position += offset;
+            SketchElement rev = revSe; rev.position += offset;
+            InsertSketchPair(lsMap, hitIdx, {fwd}, {rev}, bPaired);
             WHEN("The functor is called") {
                 HitCandidateMap res = cdf(lsMap);
-                size_t nOrig = res.size();
-                THEN("Then "<< nHits <<" hits are found") {
-                    REQUIRE ( nOrig == nHits );
+                REQUIRE(res.size() == 1);
+                auto it = res.begin();
+                REQUIRE( it->first == hitIdx );
+                REQUIRE( it->second.first.size() == 1 );
+                if(bPaired) {
+                    REQUIRE( it->second.second.size() == 1 );
+                }
+                THEN("The hit has the correct offset") {
+                    REQUIRE( it->second.first.front() == offset);
+                    if(bPaired) {
+                        REQUIRE( it->second.second.front() == offset );
+                    }
+                }
+            }
+        }
+    }
+    GIVEN("A two element sketch with a repeat") {
+        SketchElement fwdSeRpt = {0x01,5};
+        SketchElement revSeRpt = {0x11,6};
+        bool bPaired = GENERATE(true,false);
+        CAPTURE(bPaired);
+        CandidateDuplicateFinder cdf;
+        cdf.fqtIdx = 1;
+        cdf.bPaired = bPaired;
+        cdf.sp.first = {fwdSe, fwdSeRpt };
+        if(bPaired) { cdf.sp.second = {revSe, revSeRpt}; }
+        int offset = GENERATE(-1,0,1);
+        AND_GIVEN("A local syncmer map with a hit offset by " << offset) {
+            LocalSyncmerMap lsMap;
+            InsertSketchPair(lsMap, cdf.fqtIdx, cdf.sp.first, cdf.sp.second, bPaired);
+            size_t hitIdx = 2;
+            Sketch fwd = cdf.sp.first;
+            fwd[0].position += offset; fwd[1].position += offset+5;
+            Sketch rev = cdf.sp.second;
+            if(bPaired) {
+                rev[0].position += offset; rev[1].position += offset+5;
+            }
+            InsertSketchPair(lsMap, hitIdx, fwd, rev, bPaired);
+            WHEN("The functor is called") {
+                HitCandidateMap res = cdf(lsMap);
+                REQUIRE(res.size() == 1);
+                auto it = res.begin();
+                REQUIRE( it->first == hitIdx );
+                REQUIRE( it->second.first.size() == 2 );
+                if(bPaired) {
+                    REQUIRE( it->second.second.size() == 2 );
+                }
+                THEN("The offsets for both elements of the hit are correct"){
+                    REQUIRE( it->second.first[0] == offset);
+                    REQUIRE( it->second.first[1] == offset + 5);
+                    if(bPaired) {
+                        REQUIRE( it->second.second[0] == offset );
+                        REQUIRE( it->second.second[1] == offset + 5);
+                    }
+                }
+            }
+        }
+    }
+    GIVEN("A two distinct element sketch") {
+        SketchElement fwdSeSep = {0x02,7};
+        SketchElement revSeSep = {0x12,8};
+        bool bPaired = GENERATE(true,false);
+        CAPTURE(bPaired);
+        CandidateDuplicateFinder cdf;
+        cdf.fqtIdx = 1;
+        cdf.bPaired = bPaired;
+        cdf.sp.first = {fwdSe, fwdSeSep };
+        if(bPaired) { cdf.sp.second = {revSe, revSeSep}; }
+        AND_GIVEN("A local syncmer map with a hit for only one of the two elements ") {
+            int offset = GENERATE(-1,0,1);
+            size_t seIdx = GENERATE(0,1);
+            CAPTURE (offset, seIdx);
+            LocalSyncmerMap lsMap;
+            InsertSketchPair(lsMap, cdf.fqtIdx, cdf.sp.first, cdf.sp.second, bPaired);
+            size_t hitIdx = 2;
+            SketchElement fwd = cdf.sp.first[seIdx];
+            SketchElement rev;
+            fwd.position += offset;
+            if(bPaired) {
+                rev = cdf.sp.second[seIdx];
+                rev.position += offset;
+            }
+            InsertSketchPair(lsMap, hitIdx, {fwd}, {rev}, bPaired);
+            WHEN("The functor is called") {
+                HitCandidateMap res = cdf(lsMap);
+                REQUIRE(res.size() == 1);
+                auto it = res.begin();
+                REQUIRE( it->first == hitIdx );
+                THEN("There are still 2 offsets in the result") {
+                    REQUIRE( it->second.first.size() == 2 );
+                    if(bPaired) {
+                        REQUIRE( it->second.second.size() == 2 );
+                    }
+                    AND_THEN("The offsets for the one elements of the hit are correct"){
+                        for(size_t i = 0; i < 2; i++){
+                            int expect = (i == seIdx) ? offset : std::numeric_limits<int>::max();
+                            REQUIRE( it->second.first[i] == expect );
+                        }
+                        if(bPaired) {
+                            for(size_t i = 0; i < 2; i++){
+                                int expect = (i == seIdx) ? offset : std::numeric_limits<int>::max();
+                                REQUIRE( it->second.second[i] == expect );
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-//TODO: Test results numbers for multiple s
-
-
-TEST_CASE("CandidateDuplicateFinder correctly finds candidates","[CandidateDuplicateFinder][Unit]") {
-    //SketchPair1 fwd 4 unique hashes, with the first and 4th the same
-    //            rev 4 unique hashes, with the 2nd and 5th the same  (i.e revComp)
-    //SketchPair2 
-    std::vector<SketchPair> spVec = {
-        {   {{0x01,1},{0x02,2},{0x03,3},{0x01,4},{0x04,5}},
-            {{0x11,1},{0x12,2},{0x13,3},{0x14,4},{0x12,5}} },
-        {   {{0x01,1},{0x02,2},{0x03,3},{0x01,4},{0x24,5}},
-            {{0x21,1},{0x12,2},{0x13,3},{0x11,4},{0x14,5}} } };
-    GIVEN("A Local SyncmerMap") {
-        LocalSyncmerMap lsMap;
-        for(size_t i = 0; i < spVec.size(); i++){
-            lsMap.insert(HashedFastqSet::fqt2sk(i,false),spVec[i].first);
-            lsMap.insert(HashedFastqSet::fqt2sk(i,true),spVec[i].second);
-        }
-        //TODO:
-    }
-
     
-}
-
-//TODO
-
 // ### DuplicateFilter
 
 
