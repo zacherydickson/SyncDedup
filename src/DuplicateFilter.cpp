@@ -188,7 +188,7 @@ bool DuplicateFilter::operator()(   const Sketcher & sketcher,
     if(cdf.sp.first.size() + cdf.sp.second.size() <= 0) {
         return true;
     }
-    HitCandidateMap candMap = cdf(hfqSet);
+    HitCandidateMap candMap = cdf(hfqSet.sketchMap);
     //Filter candidates with excessive indels or substitutions
     //  Indels must be handled first, as the assumption for the sub filter
     //  is that all positions correspond
