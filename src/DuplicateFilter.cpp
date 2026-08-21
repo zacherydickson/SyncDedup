@@ -1,6 +1,7 @@
 #include <DuplicateFilter.h>
 #include <cmath>
 #include <limits>
+#include <unordered_set>
 
 namespace DuplicateFilterNS {
 
@@ -28,6 +29,8 @@ HitCandidateMap CandidateDuplicateFinder::operator()(
                                     std::vector<int>(
                                         (this->bPaired ? this->sp.second.size() : 0),
                                         std::numeric_limits<int>::max() ) };
+    //Make sure a given sketch element hit is used only once per query
+    std::unordered_map<size_t,std::unordered_set<size_t>> usedHits;
     for(uint8_t parity = 0; parity <= (this->bPaired ? 1 : 0); parity++){
         const Sketch & sketch = (parity == 0) ? this->sp.first : this->sp.second;
         //Sketches appear in their order within a sequence
@@ -56,7 +59,10 @@ HitCandidateMap CandidateDuplicateFinder::operator()(
                         curSEoIPos = le.pos;
                     }
                 }
-                posMap[curFqtIdx].push_back(le.pos);
+                auto uit = usedHits.find(curFqtIdx);
+                if(uit == usedHits.end() || !uit->second.count(le.pos)) {
+                    posMap[curFqtIdx].push_back(le.pos);
+                }
             }
             //The hit has to contain the sketch of interest to matter
             if(curSEoIPos == -1ULL){ continue; }
@@ -65,11 +71,13 @@ HitCandidateMap CandidateDuplicateFinder::operator()(
             for(const auto & pair : posMap) {
                 if(pair.first == this->fqtIdx) { continue; }
                 int minOff = std::numeric_limits<int>::max();
+                size_t minOffIdx;
                 int globalMinOff = minOff;
                 for(size_t i = 0; i < pair.second.size(); i++){
                     int curOff = pair.second[i] - curSEoIPos;
                     if(std::abs(curOff) < std::abs(minOff)){
                         minOff = curOff;
+                        minOffIdx = i;
                     }
                     //Check against all sketch of interest positions
                     for(size_t seoIPos : posMap[fqtIdx]){
@@ -88,6 +96,7 @@ HitCandidateMap CandidateDuplicateFinder::operator()(
                                                     it->second.first :
                                                     it->second.second;
                     offSetVec[sketchElementIndex] = minOff;
+                    usedHits[pair.first].insert(pair.second[minOffIdx]);
                 }
             }
         }
