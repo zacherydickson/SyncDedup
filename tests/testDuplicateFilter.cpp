@@ -727,7 +727,6 @@ SCENARIO ("DuplicateFilter Returns expected results","[DuplicateFilter][Unit]") 
         std::shared_ptr<std::vector<FastqTemplate_t>> fqtVec_ptr(
                 new std::vector<FastqTemplate_t>);
         *fqtVec_ptr = {fqt1,fqt1dup,fqt1plus1off,fqt1minus1off,fqt2};
-        std::vector<bool> notDupVec = {true,false,true,true,true};
         Sketcher sketcher(13,7,1);
         SketchHashFactory shFactory(Sketcher(sketcher),0);
         HashedFastqSet hfqSet;
@@ -735,6 +734,7 @@ SCENARIO ("DuplicateFilter Returns expected results","[DuplicateFilter][Unit]") 
         size_t nInserted = shFactory.FillHashedFastqSet(src,hfqSet);
         REQUIRE( nInserted == fqtVec_ptr->size() );
         AND_GIVEN("A default Duplicate Filter") {
+            std::vector<bool> notDupVec = {true,false,true,true,true};
             DuplicateFilter filter;
             WHEN("The filter is applied") {
                 for(size_t i = 0; i < fqtVec_ptr->size(); i++){
