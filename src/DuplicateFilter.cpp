@@ -23,13 +23,13 @@ HitCandidateMap CandidateDuplicateFinder::operator()(
 {
     HitCandidateMap candMap;
     HitCandidate defaultHitCand = { std::vector<int>(
-                                        sp.first.size(),
+                                        this->sp.first.size(),
                                         std::numeric_limits<int>::max() ),
                                     std::vector<int>(
-                                        (bPaired ? sp.second.size() : 0),
+                                        (this->bPaired ? this->sp.second.size() : 0),
                                         std::numeric_limits<int>::max() ) };
-    for(uint8_t parity = 0; parity <= (bPaired ? 1 : 0); parity++){
-        const Sketch & sketch = (parity == 0) ? sp.first : sp.second;
+    for(uint8_t parity = 0; parity <= (this->bPaired ? 1 : 0); parity++){
+        const Sketch & sketch = (parity == 0) ? this->sp.first : this->sp.second;
         //Sketches appear in their order within a sequence
         //we can track the last place we considered in order to determine
         //which position the current se of interest occured at in its sequence
@@ -42,27 +42,28 @@ HitCandidateMap CandidateDuplicateFinder::operator()(
             std::vector<size_t> hitIdxVec;
             //Track all positions within a particular template the syncmer occured
             std::unordered_map<size_t,std::vector<size_t>> posMap;
+            auto it = sketchMap.find(se.hash);
+            //Skip elements which are not in the input
+            if(it == sketchMap.end()){ continue; }
             //Find the non-self hits and determine the current SE of interest position
-            for(const LocationElement & le : sketchMap.at(se)) {
+            for(const LocationElement & le : it->second) {
                 //Skip hits with different parity
                 if( HashedFastqSet::skparity(le.id) != parity ) { continue; }
                 //Determine the location of sketch in the current template of interest
                 size_t curFqtIdx = HashedFastqSet::sk2fqt(le.id);
-                if( curFqtIdx == fqtIdx ) {
+                if( curFqtIdx == this->fqtIdx ) {
                     if(le.pos > lastSEoIPos && le.pos < curSEoIPos){
                         curSEoIPos = le.pos;
                     }
                 }
                 posMap[curFqtIdx].push_back(le.pos);
             }
-#ifndef NDEBUG
-            if(curSEoIPos == -1ULL){
-                throw std::logic_error("Attempt to search for a sketchElement which is not in the HashedFastqSet");
-            }
-#endif
+            //The hit has to contain the sketch of interest to matter
+            if(curSEoIPos == -1ULL){ continue; }
+            lastSEoIPos = curSEoIPos;
             //Determine the hit position which is absolutely closest to the curSEoIPos
             for(const auto & pair : posMap) {
-                if(pair.first == fqtIdx) { continue; }
+                if(pair.first == this->fqtIdx) { continue; }
                 int minOff = std::numeric_limits<int>::max();
                 int globalMinOff = minOff;
                 for(size_t i = 0; i < pair.second.size(); i++){
@@ -119,7 +120,6 @@ bool IndelFilter::operator()(   const FastqTemplate_t & fqt,
             if(off == 0) { zeroOffCount++; }
             lastOffset = off;
         }
-        //std::cerr << int(parity) << ") " << count << "\t" << zeroOffCount << "\t" << indelCount << " vs " << maxIndels << "\n";
         if( !count ) { continue; }
         if( !zeroOffCount ) { return false; } //There are no zero-offset sketches
         if( indelCount > maxIndels ) { return false; } //There are too many offset swaps
@@ -162,7 +162,6 @@ bool SubstitutionFilter::operator()(size_t k,
             }
         }
         size_t nMinSub = mmIntervals.size();
-        //std::cerr << "\tminSubs: "<< nMinSub <<" vs maxSubs: "<<maxSubs<<"\n";
         if(nMinSub > maxSubs) { return false; }
     }
     return true;
