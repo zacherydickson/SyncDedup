@@ -22,7 +22,6 @@ struct CandidateDuplicateFinder {
     size_t fqtIdx;
     bool bPaired;
     SketchPair sp;
-        //TODO: ADD Tests
     HitCandidateMap operator()(const LocalSyncmerMap & sketchMap ) const ;
 };
 
@@ -43,16 +42,14 @@ struct SubstitutionFilter {
 
 class DuplicateFilter {
     public:
-        //TODO: ADD Tests
-        DuplicateFilter() = delete;
+        DuplicateFilter()
+            : DuplicateFilter(DefaultIndelRate,DefaultSubstitutionRate) {};
         DuplicateFilter(DuplicateFilter & other)
-            :   indelFilter_{other.indelFilter_.MaxIndelRate},
-                subsFilter_{other.subsFilter_.MaxSubRate} {}
-        DuplicateFilter(double indelRate = DefaultIndelRate,
-                        double subRate = DefaultSubstitutionRate)
+            : DuplicateFilter(other.indelFilter_.MaxIndelRate,
+                                other.subsFilter_.MaxSubRate) {}
+        DuplicateFilter(double indelRate, double subRate )
             : indelFilter_{indelRate}, subsFilter_{subRate} {}
 
-        //TODO: ADD Tests
         bool operator()(const Sketcher & sketcher,
                         size_t fqtIdx,
                         const HashedFastqSet & hfqSet) const;
